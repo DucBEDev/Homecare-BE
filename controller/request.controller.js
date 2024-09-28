@@ -44,47 +44,88 @@ function calculateRequestCost(request, service) {
 
 
 // [GET] /admin/requests
+// module.exports.index = async (req, res) => {
+//     const undeterminedCosts = await Request.find({
+//         deleted: false,
+//         status: "pending"
+//     });
+
+//     const processingRequests = await Request.find({
+//         deleted: false,
+//         status: "notDone"
+//     });
+
+//     const historyRequests = await Request.find({
+//         deleted: false,
+//         status: "done"
+//     });
+
+//     processingRequests.map(request => {
+//         const startTime = moment(request.startTime).utc(); 
+//         const endTime = moment(request.endTime).utc(); 
+
+//         // Get the current time
+//         const now = moment().utc();
+//         now.add(7, 'hours');
+
+//         if (now.isBetween(startTime, endTime)) {
+//             request.status = "unconfirmed";
+//         }
+//         else if (now.isAfter(startTime, endTime)) {
+//             request.status = "done";
+//         }
+//         else if (request.helper_id) {
+//             request.status = "assigned";
+//         }
+//     });
+
+//     res.render('pages/requests/index', {
+//         pageTitle: "Quản lý đơn hàng",
+//         undeterminedCosts: undeterminedCosts,
+//         processingRequests: processingRequests,
+//         historyRequests: historyRequests,
+//     });
+// }
+
 module.exports.index = async (req, res) => {
-    const undeterminedCosts = await Request.find({
-        deleted: false,
-        status: "pending"
-    });
+    try {
+        const undeterminedCosts = await Request.find({
+            deleted: false,
+            status: "pending"
+        });
 
-    const processingRequests = await Request.find({
-        deleted: false,
-        status: "notDone"
-    });
+        const processingRequests = await Request.find({
+            deleted: false,
+            status: "notDone"
+        });
 
-    const historyRequests = await Request.find({
-        deleted: false,
-        status: "done"
-    });
+        const historyRequests = await Request.find({
+            deleted: false,
+            status: "done"
+        });
 
-    processingRequests.map(request => {
-        const startTime = moment(request.startTime).utc(); 
-        const endTime = moment(request.endTime).utc(); 
+        processingRequests.forEach(request => {
+            const startTime = moment(request.startTime).utc();
+            const endTime = moment(request.endTime).utc();
+            const now = moment().utc().add(7, 'hours');
 
-        // Get the current time
-        const now = moment().utc();
-        now.add(7, 'hours');
+            if (now.isBetween(startTime, endTime)) {
+                request.status = "unconfirmed";
+            } else if (now.isAfter(endTime)) {
+                request.status = "done";
+            } else if (request.helper_id) {
+                request.status = "assigned";
+            }
+        });
 
-        if (now.isBetween(startTime, endTime)) {
-            request.status = "unconfirmed";
-        }
-        else if (now.isAfter(startTime, endTime)) {
-            request.status = "done";
-        }
-        else if (request.helper_id) {
-            request.status = "assigned";
-        }
-    });
-
-    res.render('pages/requests/index', {
-        pageTitle: "Quản lý đơn hàng",
-        undeterminedCosts: undeterminedCosts,
-        processingRequests: processingRequests,
-        historyRequests: historyRequests,
-    });
+        res.json({
+            undeterminedCosts,
+            processingRequests,
+            historyRequests
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
 }
 
 // [GET] /admin/requests/create

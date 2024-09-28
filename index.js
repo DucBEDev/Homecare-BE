@@ -6,6 +6,14 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT;
 
+// Config CORS to connect FE and BE
+const cors = require('cors');
+app.use(cors({
+    origin: 'http://localhost:3000', // địa chỉ của frontend
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', "application/json", "text/plain"]
+}));
+
 // Connect to mongoose DB
 const database = require("./config/database")
 database.connect();
