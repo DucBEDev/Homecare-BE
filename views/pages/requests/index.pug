@@ -1,0 +1,159 @@
+extends ../../layouts/default.pug
+include ../../mixins/filterStatus.pug
+include ../../mixins/search.pug
+include ../../mixins/formChangeMulti.pug
+include ../../mixins/pagination.pug
+include ../../mixins/alert.pug
+include ../../mixins/moment.pug
+
+block main 
+    +alert-success(5000)
+    +alert-error(5000)
+    
+    h1 Quản lý đơn hàng
+    
+    .card.mb-3 
+        .card-header Đơn hàng cần xử lý
+        .card-body 
+            .row
+                .col-8
+                    //- +form-change-multi(`${prefixAdmin}/staffs/change-multi?_method=PATCH`)
+                .col-4 
+                    a(
+                        href=`${prefixAdmin}/requests/create`
+                        class="btn btn-outline-success"
+                    ) +Thêm mới
+            
+            table(class="table table-hover table-sm") 
+                    thead 
+                        tr 
+                            th STT
+                            th SĐT
+                            th Loại yêu cầu
+                            th Địa chỉ
+                            th Trạng thái
+                            th Ngày đặt yêu cầu
+                            th Hoạt động
+                    tbody
+                        each item, index in processingRequests
+                            tr 
+                                td #{index + 1}
+                                td #{item.customerInfo.phone}
+                                if (item.requestType == "shortTerm")
+                                    td Ngắn hạn 
+                                else 
+                                    td Dài hạn
+                                td #{item.customerInfo.address}
+                                if (item.status == "notDone")
+                                    td Chưa tiến hành
+                                else if (item.status == "assigned")
+                                    td Chưa tiến hành (Đã giao việc)
+                                else if (item.status == "unconfirmed")
+                                    td Chờ xác nhận
+                                else if (item.status == "processing")
+                                    td Đang tiến hành
+                                else 
+                                    td Đã hoàn thành
+                                td
+                                    +formatDate(item.orderDate)
+                                td
+                                    a(
+                                        href=`${prefixAdmin}/requests/detail/${item.id}`
+                                        class="btn btn-secondary btn-sm"
+                                    ) Chi tiết 
+                                    a(
+                                        href=`${prefixAdmin}/requests/edit/${item.id}`
+                                        class="btn btn-warning btn-sm"
+                                    ) Sửa
+                                    button(
+                                        class="btn btn-danger btn-sm"
+                                        button-delete
+                                        data-id=item.id
+                                    ) Xóa 
+
+        //- +pagination(pagination)
+
+    .card.mb-3 
+        .card-header Đơn hàng chưa xác định chi phí
+        .card-body 
+            table(class="table table-hover table-sm") 
+                    thead 
+                        tr 
+                            th STT
+                            th SĐT
+                            th Loại yêu cầu
+                            th Địa chỉ
+                            th Trạng thái
+                            th Ngày đặt yêu cầu
+                            th Hoạt động
+                    tbody
+                        each item, index in undeterminedCosts
+                            tr 
+                                td #{index + 1}
+                                td #{item.customerInfo.phone}
+                                if (item.requestType == "shortTerm")
+                                    td Ngắn hạn 
+                                else 
+                                    td Dài hạn
+                                td #{item.customerInfo.address}
+                                td Chờ liên hệ
+                                td
+                                    +formatDate(item.orderDate)
+                                td
+                                    a(
+                                        href=`${prefixAdmin}/requests/edit/${item.id}`
+                                        class="btn btn-warning btn-sm"
+                                    ) Sửa
+                                    a(
+                                        href=`${prefixAdmin}/requests/updateRequestCost/${item.id}`
+                                        class="btn btn-primary btn-sm"
+                                    ) Liên hệ
+                                    button(
+                                        class="btn btn-danger btn-sm"
+                                        button-delete
+                                        data-id=item.id
+                                    ) Xóa 
+
+        //- +pagination(pagination)
+
+    .card.mb-3 
+        .card-header Lịch sử đơn hàng
+        .card-body 
+            table(class="table table-hover table-sm") 
+                    thead 
+                        tr 
+                            th STT
+                            th SĐT
+                            th Loại yêu cầu
+                            th Địa chỉ
+                            th Trạng thái
+                            th Ngày đặt yêu cầu
+                            th Hoạt động
+                    tbody
+                        each item, index in historyRequests
+                            tr 
+                                td #{index + 1}
+                                td #{item.customerInfo.phone}
+                                if (item.requestType == "shortTerm")
+                                    td Ngắn hạn 
+                                else 
+                                    td Dài hạn
+                                td #{item.customerInfo.address}
+                                td Đã hoàn thành
+                                td
+                                    +formatDate(item.orderDate)
+                                td
+                                    a(
+                                        href=`${prefixAdmin}/requests/detail/${item.id}`
+                                        class="btn btn-secondary btn-sm"
+                                    ) Chi tiết 
+
+        //- +pagination(pagination)
+
+        form(
+            action=""
+            method="POST"
+            id="form-delete-item"
+            data-path=`${prefixAdmin}/requests/delete`
+        )
+                        

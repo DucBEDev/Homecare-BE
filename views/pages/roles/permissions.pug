@@ -1,0 +1,97 @@
+extends ../../layouts/default.pug
+include ../../mixins/alert.pug
+
+block main
+    +alert-success(5000) 
+    h1(class="mb-4") Phân quyền 
+
+    if(records)
+        div(data-records=records)
+        div(class="text-right")
+            button(
+                type="submit"
+                class="btn btn-primary mb-3"
+                button-submit
+            ) Cập nhật 
+
+        table(
+            class="table table-hover table-sm"
+            table-permissions
+        )
+            thead 
+                tr  
+                    th Tính năng 
+                    each item in records 
+                        th(class="text-center") #{item.title} 
+            tbody 
+                tr(data-name="id" class="d-none") 
+                    td 
+                    each item in records 
+                        td(class="text-center") 
+                            input(type="text" value=item.id)
+
+                //- Quản lý người giúp việc
+                tr 
+                    td(colspan="4")
+                        b Quản lý người giúp việc
+                tr(data-name="helpers_view")
+                    td Xem 
+                    each item in records 
+                        td(class="text-center")
+                            input(type="checkbox")
+                tr(data-name="helpers_create")
+                    td Thêm mới 
+                    each item in records 
+                        td(class="text-center")
+                            input(type="checkbox")
+                tr(data-name="helpers_edit")
+                    td Chỉnh sửa 
+                    each item in records 
+                        td(class="text-center")
+                            input(type="checkbox")
+                tr(data-name="helpers_delete")
+                    td Xóa 
+                    each item in records 
+                        td(class="text-center")
+                            input(type="checkbox")
+
+                //- Quản lý nhân viên
+                tr 
+                    td(colspan="4")
+                        b Quản lý nhân viên
+                tr(data-name="staffs_view")
+                    td Xem 
+                    each item in records 
+                        td(class="text-center")
+                            input(type="checkbox")
+                tr(data-name="staffs_create")
+                    td Thêm mới 
+                    each item in records 
+                        td(class="text-center")
+                            input(type="checkbox")
+                tr(data-name="staffs_edit")
+                    td Chỉnh sửa 
+                    each item in records 
+                        td(class="text-center")
+                            input(type="checkbox")
+                tr(data-name="staffs_delete")
+                    td Xóa 
+                    each item in records 
+                        td(class="text-center")
+                                input(type="checkbox")
+
+        
+        form(
+            id="form-change-permissions"
+            method="POST"
+            action=`${prefixAdmin}/roles/permissions?_method=PATCH`
+            class="d-none"
+        )
+            div(class="form-group")
+                input(
+                    type="text"
+                    class="form-control"
+                    name="permissions"
+                )
+
+        script(src="/js/roles.js")

@@ -1,0 +1,98 @@
+extends ../../layouts/default.pug
+include ../../mixins/moment.pug
+
+block main 
+    if (helper.helper_id)
+        div(class="mb-4") CMND: <b>#{helper.helper_id}</b>
+
+    if (helper.fullName)
+        div(class="mb-4") Họ và tên: <b>#{helper.fullName}</b>
+    
+    if (helper.startDate)
+        div(class="mb-4") Ngày bắt đầu làm việc: <b>
+        +formatDate(helper.startDate)
+        </b>
+
+    if (helper.birthDate)
+        div(class="mb-4") Ngày sinh: <b>
+        +formatDate(helper.birthDate)
+        </b>
+    
+    if (helper.phone)
+        div(class="mb-4") SĐT: <b>#{helper.phone}</b>
+
+    if (helper.gender)
+        div(class="mb-4") Giới tính: <b>#{helper.gender}</b>
+
+    if (helper.nationality)
+        div(class="mb-4") Dân tộc: <b>#{helper.nationality}</b>
+
+    if (helper.educationLevel)
+        div(class="mb-4") Trình độ: <b>#{helper.educationLevel}</b>
+
+    if (helper.height && helper.weight)
+        div(class="mb-4") Chiều cao / Cân nặng: <b>#{helper.height} / #{helper.weight}</b>
+
+    if (helper.birthPlace)
+        div(class="mb-4") Quê quán: <b>#{helper.birthPlace}</b>
+
+    if (helper.address)
+        div(class="mb-4") Địa chỉ nhà: <b>#{helper.address}</b>
+    
+    if (helper.jobDetail)
+        div(class="mb-4") Chi tiết công việc: <b>#{helper.jobDetail}</b>
+
+    if (helper.jobDetail == "fullTime")
+        if (helper.workingArea)
+            div(class="mb-4") Khu vực làm việc: 
+            ul 
+                li Tỉnh/Thành phố: <b>#{helper.workingArea.province}</b>
+    else 
+        if (helper.workingArea)
+            div(class="mb-4") Khu vực làm việc: 
+            ul 
+                li Tỉnh/Thành phố: <b>#{helper.workingArea.province}</b>
+                li Quận chính: <b>#{helper.workingArea.districts[0]}</b>
+                li Quận phụ: <b>#{helper.workingArea.districts[1]}</b>
+
+    if (services.length > 0)
+        div(class="mb-4") Danh sách công việc: 
+        ul
+            each item in services
+                li <b>#{item.title}</b>
+    
+    if (helper.yearOfExperience)
+        div(class="mb-4") Số năm kinh nghiệm: <b>#{helper.yearOfExperience}</b>
+
+    if (helper.experienceDescription)
+        div(class="mb-4") Mô tả kinh nghiệm: <b>#{helper.experienceDescription}</b>
+
+    
+    if (helper.avatar)
+        div(class="mb-4") Avatar
+            img(
+                src=helper.avatar 
+                style="width: 100px"
+            )
+
+    if (helper.healthCertificates)
+        div(class="mb-4") Giấy khám sức khỏe
+            each item in helper.healthCertificates
+                img(
+                    src=item 
+                    style="width: 100px"
+                )
+
+
+    if (helper.status)
+        div(class="mb-4")
+            span Trạng thái: 
+                if (helper.status === "active")
+                    span(class="badge bg-success") Hoạt động
+                else    
+                    span(class="badge bg-danger") Không hoạt động
+
+    a(
+        href=`${prefixAdmin}/staffs/edit/${helper.id}`
+        class="btn btn-warning"
+    ) Chỉnh sửa 

@@ -1,0 +1,21 @@
+extends ../../layouts/default.pug
+include ../../mixins/moment.pug
+
+block main 
+    form(
+        action=`${prefixAdmin}/requests/updateRequestCost/${requestId}?_method=PATCH`
+        method="POST"
+    )
+        div(class="form-group")
+            label(for="negotiationCosts") Giá thỏa thuận *
+            input(
+                type="text"
+                id="negotiationCosts"
+                name="negotiationCosts"
+                class="form-control"
+                required
+            )
+        button(
+            class="btn btn-primary"
+            type="submit"
+        ) Cập nhật

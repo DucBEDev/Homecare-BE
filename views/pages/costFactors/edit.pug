@@ -1,0 +1,66 @@
+extends ../../layouts/default.pug
+
+block main 
+    h1(class="mb-4") Thêm mới hệ số chi phí
+
+    form(
+        action=`${prefixAdmin}/costFactors/edit/${record.id}?_method=PATCH`
+        method="POST"
+    )
+        div(class="form-group")
+            label(for="title") Tiêu đề
+            input(
+                type="text"
+                class="form-control"
+                id="title"
+                name="title"
+                value=record.title
+                required
+            )
+        div(class="form-group")
+            label(for="desc") Mô tả
+            input(
+                type="text"
+                class="form-control"
+                id="desc"
+                name="description"
+                value=record.description
+                required
+            )
+        div(class="form-group")
+            label(for="coefficient") Hệ số
+            input(
+                type="text"
+                class="form-control"
+                id="coefficient"
+                name="coefficient"
+                value=record.coefficient
+                required
+            )
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusActive"
+                name="status"
+                value="active"
+                checked=(record.status == "active") ? true : false
+            )
+            label(for="statusActive" class="form-check-label") Hoạt động
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusInActive"
+                name="status"
+                value="inactive"
+                checked=(record.status == "inactive") ? true : false
+            )
+            label(for="statusInActive" class="form-check-label") Dừng hoạt động
+        div(Class="form-group")
+            button(
+                type="submit"
+                class="btn btn-primary"
+            ) Tạo mới
+    
+        

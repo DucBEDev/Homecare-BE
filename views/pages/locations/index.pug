@@ -1,0 +1,69 @@
+extends ../../layouts/default.pug
+include ../../mixins/alert.pug
+
+block main 
+    +alert-success(5000)
+
+    h1 Danh sách địa điểm (Bấm vào tên tỉnh để hiện danh sách quận)
+
+    .card.mb-3 
+        .card-header Thông tin các tỉnh/thành phố
+        .card-body 
+            .row 
+                .col-12 
+                    a(
+                        href=`${prefixAdmin}/locations/createProvince`
+                        class="btn btn-outline-success"
+                    ) +Thêm mới
+
+            table(
+                class="table table-hover table-sm"
+            )
+                thead 
+                    tr 
+                        th Tên tỉnh/thành phố
+                        th Hành động 
+                tbody 
+                    if (locations.length > 0)
+                        each item in locations
+                            tr
+                                td(chooseProvince)
+                                    span(data-name=item.province) #{item.province} 
+                                td 
+                                    button(
+                                        class="btn btn-danger btn-sm"
+                                        button-delete-province
+                                        data-id=item.id
+                                    ) Xóa 
+                    else 
+                        td 
+                            span(class="text-center") Chưa có địa điểm nào được thêm
+
+    .card.mb-3 
+        .card-header Thông tin các quận trong tỉnh/thành phố
+        .card-body 
+            .row 
+                .col-12 
+                    a(
+                        href=`${prefixAdmin}/locations/createDistrict`
+                        class="btn btn-outline-success"
+                    ) +Thêm mới
+
+            table(
+                class="table table-hover table-sm"
+            )
+                thead 
+                    tr 
+                        th Tên quận
+                        th Tên tỉnh/thành phố tương ứng
+                        th Hành động 
+                tbody(displayDistricts) 
+
+        form(
+            action=""
+            method="POST"
+            id="form-delete-location"
+            data-path=`${prefixAdmin}/locations/delete`
+        )
+    
+    script(src="/js/location.js")

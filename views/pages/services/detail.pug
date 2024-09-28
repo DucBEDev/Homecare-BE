@@ -1,0 +1,38 @@
+extends ../../layouts/default.pug
+include ../../mixins/moment.pug
+
+block main 
+    if (service.title)
+        div(class="mb-4") Dịch vụ: <b>#{service.title}</b>
+
+    if (service.basicPrice)
+        div(class="mb-4") Giá cơ bản (VNĐ/Giờ): <b>#{service.basicPrice}</b>
+
+    if (service.extraFee)
+        div(class="mb-4") Phụ phí: 
+            if (service.extraFee == "yes")
+                <b>Có</b>
+            else 
+                <b>Không</b>
+    
+    if (service.overTimePrice_Helper)
+        div(class="mb-4") Phí Ngoài Giờ (KH): <b>#{service.overTimePrice_Helper}</b>
+
+    if (service.overTimePrice_Customer)
+        div(class="mb-4") Phí Ngoài Giờ (NGV): <b>#{service.overTimePrice_Customer}</b>
+
+    if (service.description)
+        div(class="mb-4") Mô tả: <b>!{service.description}</b>
+
+    if (service.status)
+        div(class="mb-4")
+            span Trạng thái: 
+                if (service.status === "active")
+                    span(class="badge bg-success") Hoạt động
+                else    
+                    span(class="badge bg-danger") Không hoạt động
+
+    a(
+        href=`${prefixAdmin}/services/edit/${service.id}`
+        class="btn btn-warning"
+    ) Chỉnh sửa 

@@ -1,0 +1,145 @@
+extends ../../layouts/default.pug
+include ../../mixins/alert.pug
+
+
+block main 
+    +alert-error(5000)
+
+    h1(class="mb-4") Chỉnh sửa nhân viên
+
+    form(
+        action=`${prefixAdmin}/staffs/edit/${staff.id}?_method=PATCH`
+        method="POST"
+        enctype="multipart/form-data"
+    )
+        div(class="form-group")
+            label(for="staff_id") Chứng minh nhân dân *
+            input(
+                type="text"
+                id="staff_id"
+                name="staff_id"
+                class="form-control"
+                value=staff.staff_id
+                required 
+            )
+        div(class="form-group")
+            label(for="fullName") Họ tên *
+            input(
+                type="text"
+                id="fullName"
+                name="fullName"
+                class="form-control"
+                value=staff.fullName
+                required 
+            )
+        div(class="form-group")
+                label(for="password") Mật khẩu *
+                input(
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-control"
+                )
+        div(class="form-group")
+            label(for="birthDate") Ngày sinh *
+            input(
+                type="date"
+                id="birthDate"
+                name="birthDate"
+                class="form-control"
+                value=newBirthDate
+                required 
+            ) 
+        div(class="form-group")
+            label(for="phone") Số điện thoại *
+            input(
+                type="phone"
+                id="phone"
+                name="phone"
+                class="form-control"
+                value=staff.phone
+                required 
+            )
+        div(class="form-group")
+            label(for="email") Email *
+            input(
+                type="email"
+                id="email"
+                name="email"
+                class="form-control"
+                value=staff.email
+                required 
+            )
+        div(class="form-group")
+            label(for="birthPlace") Quê quán *
+            input(
+                type="text"
+                id="birthPlace"
+                name="birthPlace"
+                class="form-control"
+                value=staff.birthPlace
+                required 
+            )
+        div(class="form-group")
+            label(for="salary") Lương *
+            input(
+                type="text"
+                id="salary"
+                name="salary"
+                class="form-control"
+                value=staff.salary
+                required 
+            )
+        div(
+            class="form-group"
+            upload-image
+        )
+            label(for="avatar") Hình ảnh 
+            input(
+                type="file"
+                class="form-control-file"
+                id="avatar"
+                name="avatar"
+                accept="image/*"
+                upload-image-input
+            )
+            img(
+                src=staff.avatar
+                class="image-preview"
+                upload-image-preview
+            )
+        div(class="form-group")
+            label(for="role_id") Phân quyền *
+            select(name="role_id" id="role" class="form-control")
+                each item in roles 
+                    option(
+                        value=item.id
+                        selected=(item.id == staff.role_id ? true : false)
+                    ) #{item.title}
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusActive"
+                name="status"
+                value="active"
+                checked=(staff.status == "active" ? true : false)
+            )
+            label(for="statusActive" class="form-check-label") Hoạt động
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusInActive"
+                name="status"
+                value="inactive"
+                checked=(staff.status == "inactive" ? true : false)
+            )
+            label(for="statusInActive" class="form-check-label") Dừng hoạt động
+        div(class="form-group")
+            button(
+                type="submit"
+                class="btn btn-primary"
+            ) Cập nhật
+
+        

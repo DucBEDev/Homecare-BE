@@ -1,0 +1,34 @@
+extends ../../layouts/default.pug
+
+
+block main 
+    h1 Danh sách đơn hàng 
+
+    .card.mb-3 
+        .card-header Danh sách
+        .card-body 
+            
+            .row
+                table(
+                    class="table table-hover table-sm mt-4"
+                )
+                    thead   
+                        tr 
+                            th STT 
+                            th Số điện thoại 
+                            th Địa chỉ
+                            th Trạng thái
+                        
+                    tbody 
+                        if (records.length > 0)
+                            each item, index in records 
+                                tr 
+                                    td #{index + 1}
+                                    td #{item.customerInfo.phone}
+                                    td #{item.customerInfo.address}[#{item.location.province}][#{item.location.district}]
+                                    td 
+                                        if (item.status == "done")
+                                            | Đã hoàn thành
+                                        else if (item.status == "cancelled")
+                                            | Đã hủy
+    

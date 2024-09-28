@@ -1,0 +1,97 @@
+extends ../../layouts/default.pug
+
+block main 
+    h1(class="mb-4") Thêm mới dịch vụ
+
+    form(
+        action=`${prefixAdmin}/services/create`
+        method="POST"
+    )
+        div(class="form-group")
+            label(for="title") Tên dịch vụ: *
+            input(
+                type="text"
+                id="title"
+                name="title"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="basicPrice") Giá Cơ bản ( VNĐ/Giờ ): *
+            input(
+                type="text"
+                id="basicPrice"
+                name="basicPrice"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label Phụ phí: *
+            div(class="form-group form-check form-check-inline")
+                input(
+                    type="radio"
+                    class="form-check-input"
+                    name="extraFee"
+                    value="yes"
+                    checked
+                )
+                label(class="form-check-label") Có
+            div(class="form-group form-check form-check-inline")
+                input(
+                    type="radio"
+                    class="form-check-input"
+                    name="extraFee"
+                    value="no"
+                )
+                label(class="form-check-label") Không
+        div(class="form-group")
+            label(for="overTimePrice_Helper") Phí Ngoài Giờ KH ( % ): *
+            input(
+                type="text"
+                id="overTimePrice_Helper"
+                name="overTimePrice_Helper"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="overTimePrice_Customer") Phí Ngoài Giờ NGV ( % ): *
+            input(
+                type="text"
+                id="overTimePrice_Customer"
+                name="overTimePrice_Customer"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="description") Mô tả dịch vụ: 
+            textarea(
+                class="form-control textarea-mce"
+                id="description"
+                name="description"
+                rows="5"
+            ) 
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusActive"
+                name="status"
+                value="active"
+                checked
+            )
+            label(for="statusActive" class="form-check-label") Hoạt động
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusInActive"
+                name="status"
+                value="inactive"
+            )
+            label(for="statusInActive" class="form-check-label") Dừng hoạt động
+        div(class="form-group")
+            button(
+                type="submit"
+                class="btn btn-primary"
+            ) Tạo mới
+        

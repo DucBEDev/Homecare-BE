@@ -1,0 +1,48 @@
+extends ../../layouts/default.pug
+include ../../mixins/alert.pug
+
+
+block main 
+    +alert-success("3000")
+
+    h1 Thông tin khách hàng
+
+    .card.mb-3 
+        .card-header Danh sách
+        .card-body 
+            
+            .row
+                table(
+                    class="table table-hover table-sm mt-4"
+                )
+                    thead   
+                        tr 
+                            th STT 
+                            th Họ và Tên
+                            th Số điện thoại 
+                            th Địa chỉ
+                            th Email
+                            th Điểm khuyến mãi
+                            th Trạng thái
+                            th Hoạt động
+                    tbody 
+                        if (records.length > 0)
+                            each item, index in records 
+                                tr 
+                                    td #{index + 1}
+                                    td #{item.fullName}
+                                    td #{item.phone}
+                                    td #{item.addresses[0].province} - #{item.addresses[0].district}
+                                    td #{item.signedUp == false ? "Không" : item.email}
+                                    td #{item.totalPoints}
+                                    td 
+                                        if (item.signedUp == false)
+                                            | Tài khoản khách 
+                                        else 
+                                            | Đã đăng nhập
+                                    td 
+                                        a(
+                                            href=`${prefixAdmin}/customers/requestHistoryList/${item.phone}`
+                                            class="btn btn-success btn-sm mr-1"
+                                        ) Danh sách đơn hàng
+    

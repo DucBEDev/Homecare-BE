@@ -1,0 +1,140 @@
+extends ../../layouts/default.pug
+
+block main 
+    h1(class="mb-4") Chính sửa đơn hàng
+
+    form(
+        action=`${prefixAdmin}/requests/edit/${request.id}?_method=PATCH`
+        method="POST"
+    )
+        div(class="form-group")
+            label(for="fullName") Họ và Tên khách hàng *
+            input(
+                type="text"
+                id="fullName"
+                name="fullName"
+                class="form-control"
+                value=request.customerInfo.fullName
+                required 
+            )
+        div(class="form-group")
+            label(for="phone") Số điện thoại khách hàng *
+            input(
+                type="text"
+                id="phone"
+                name="phone"
+                class="form-control"
+                value=request.customerInfo.phone
+                required 
+            )
+        div(class="form-group")
+            label(for="address") Địa chỉ *
+            input(
+                type="text"
+                id="address"
+                name="address"
+                class="form-control"
+                value=request.customerInfo.address
+                required
+            )
+        div(class="form-group" requestArea)
+            label(for="province") Tỉnh/Thành phố *
+            select(name="province" class="form-control" chooseProvinceSelect)
+                each item in locations 
+                    option(
+                        value=item.province
+                        selected=(request.location.province == item) ? true : false
+                    ) #{item.province}
+
+            label(for="district") Quận * 
+            select(name="district" class="form-control" chooseDistrictSelect)
+                option(value=request.location.district) #{request.location.district}
+        div(class="form-group")
+            label(for="service_id") Loại dịch vụ *
+            select(name="service_id" class="form-control")
+                each item in services
+                    option(
+                        value=item.id
+                        basicPrice=item.basicPrice 
+                        extraFee=item.extraFee
+                        selected=(request.service_id == item.id) ? true : false
+                    ) #{item.title}
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="typeShortTerm"
+                name="requestType"
+                value="shortTerm"
+                checked=(request.requestType == "shortTerm") ? true : false
+            )
+            label(for="typeShortTerm" class="form-check-label") Ngắn hạn
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="typeLongTerm"
+                name="requestType"
+                value="longTerm"
+                checked=(request.requestType == "longTerm") ? true : false
+            )
+            label(for="typeLongTerm" class="form-check-label") Dài hạn
+        if (request.requestType == "shortTerm")
+            div(class="form-group" shortTerm)
+                label(for="startDate") Ngày làm việc *
+                input(
+                    type="date"
+                    id="requestDate"
+                    name="startDate"
+                    class="form-control"
+                    value=requestDate.startDate
+                )
+            div(class="form-group" longTerm)
+        else 
+            div(class="form-group" longTerm)
+                div
+                    label(for="requestDate") Ngày làm việc *
+
+                label(for="startDate") Từ *
+                input(
+                    type="date"
+                    id="requestDate"
+                    name="startDate"
+                    class="form-control"
+                    value=requestDate.startDate
+                )
+
+                label(for="endDate") Từ *
+                input(
+                    type="date"
+                    id="requestDate"
+                    name="endDate"
+                    class="form-control"
+                    value=requestDate.endDate
+                )
+            div(class="form-group" shortTerm)
+
+        div(class="form-group")
+            label(for="startTime") Giờ bắt đầu *
+            select(name="startTime" class="form-control" chooseStartTimeSelect)
+        div(class="form-group")
+            label(for="endTime") Giờ kết thúc *
+            select(name="endTime" class="form-control" chooseEndTimeSelect)
+            
+        table(class="table table-hover table-sm" calculateTotalPrice)
+            thead 
+                tr 
+                    th Phí cơ bản 
+                    th Phụ phí
+                    th Phí ngoài giờ
+                    th Tổng chi phí
+            tbody 
+                
+        div(class="form-group")
+            button(
+                type="submit"
+                class="btn btn-primary"
+            ) Cập nhật
+
+    script(src="/js/request.js")
+        

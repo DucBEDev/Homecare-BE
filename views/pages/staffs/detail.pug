@@ -1,0 +1,49 @@
+extends ../../layouts/default.pug
+include ../../mixins/moment.pug
+
+block main 
+    if (staff.staff_id)
+        div(class="mb-4") CMND: <b>#{staff.staff_id}</b>
+
+    if (staff.fullName)
+        div(class="mb-4") Họ và tên: <b>#{staff.fullName}</b>
+    
+    if (staff.birthDate)
+        div(class="mb-4") Ngày sinh: <b>
+        +formatDate(staff.birthDate)
+        </b>
+    
+    if (staff.phone)
+        div(class="mb-4") SĐT: <b>#{staff.phone}</b>
+
+    if (staff.email)
+        div(class="mb-4") Email: <b>#{staff.email}</b>
+
+    if (staff.birthPlace)
+        div(class="mb-4") Quê quán: <b>#{staff.birthPlace}</b>
+
+    if (staff.salary)
+        div(class="mb-4") Lương: <b>#{staff.salary}</b>
+    
+    if (staff.avatar)
+        div(class="mb-4")
+            img(
+                src=staff.avatar 
+                style="width: 100px"
+            )
+
+    if (staff.role)
+        div(class="mb-4") Phân quyền: <b>#{staff.role.title}</b>
+
+    if (staff.status)
+        div(class="mb-4")
+            span Trạng thái: 
+                if (staff.status === "active")
+                    span(class="badge bg-success") Hoạt động
+                else    
+                    span(class="badge bg-danger") Không hoạt động
+
+    a(
+        href=`${prefixAdmin}/staffs/edit/${staff.id}`
+        class="btn btn-warning"
+    ) Chỉnh sửa 

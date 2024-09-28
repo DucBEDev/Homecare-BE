@@ -1,0 +1,56 @@
+extends ../../layouts/default.pug
+include ../../mixins/moment.pug
+
+block main 
+    h1 Thông tin chi tiết ngày nghỉ của nhân viên 
+
+    .card.my-3 
+        .card-header
+        .card-body 
+            .row 
+                .col-4 
+                    div CMND: #{staff.staff_id}
+                    div Họ và tên: #{staff.fullName}
+                    div Ngày sinh: 
+                    +formatDate(staff.birthDate)
+                    div Số điện thoại: #{staff.phone}
+                    div Quê quán: #{staff.birthPlace}
+
+                .col-8 
+                    table(class="table table-bordered table-striped table-heading table-sm myCalendar") 
+                        thead 
+                            tr
+                                th CN 
+                                th TH 2 
+                                th TH 3 
+                                th TH 4 
+                                th TH 5
+                                th TH 6 
+                                th TH 7  
+                        tbody 
+                            each week in weekList 
+                                tr 
+                                    each date in week.dateList 
+                                        td(class="myCalendarElement")
+                                            div(
+                                                class=date.classType
+                                                style="text-align:right;margin:-8px;width:auto;height:80px;"
+                                                show-staffOffDate-detail
+                                            )
+                                                span(
+                                                    style="padding-right:5px;"
+                                                    offDate=date
+                                                ) #{date.day.getDate()}/#{date.day.getMonth() + 1}
+                                                div(style="width:auto;height:50px;text-align:center;padding-top:10px;")
+                                                i(class=date.icon)
+
+        form(
+            action=""
+            method="POST"
+            id="form-set-staffOffDate"
+            data-path=`${prefixAdmin}/staffs/createOffDate`
+        )
+
+
+                                
+                            

@@ -1,0 +1,233 @@
+extends ../../layouts/default.pug
+include ../../mixins/alert.pug
+
+block main 
+    +alert-error(5000)
+
+    h1(class="mb-4") Thêm mới người giúp việc
+
+    form(
+        action=`${prefixAdmin}/helpers/create`
+        method="POST"
+        enctype="multipart/form-data"
+        form-create-helper
+    )
+        div(class="form-group")
+            label(for="helper_id") Chứng minh nhân dân *
+            input(
+                type="text"
+                id="helper_id"
+                name="helper_id"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="fullName") Họ tên *
+            input(
+                type="text"
+                id="fullName"
+                name="fullName"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="birthDate") Ngày sinh *
+            input(
+                type="date"
+                id="birthDate"
+                name="birthDate"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="nationality") Dân tộc *
+            input(
+                type="text"
+                id="nationality"
+                name="nationality"
+                class="form-control"
+                value="Kinh"
+                required 
+            )
+        div(class="form-group")
+            label(for="gender") Giới tính: 
+            select(name="gender" id="gender" class="form-control")
+                option(value="male") Nam 
+                option(value="female") Nữ
+        div(class="form-group")
+            label(for="educationLevel") Trình độ học vấn: 
+            select(name="educationLevel" id="educationLevel" class="form-control")
+                option(value="university") Đại học 
+                option(value="college") Cao đẳng
+                option(value="vocational") Trung cấp
+                option(value="general") Phổ thông
+        div(class="form-group")
+            label(for="height") Chiều cao (cm) *
+            input(
+                type="text"
+                id="height"
+                name="height"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="weight") Cân nặng (kg) *
+            input(
+                type="text"
+                id="weight"
+                name="weight"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="phone") Số điện thoại *
+            input(
+                type="phone"
+                id="phone"
+                name="phone"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="birthPlace") Quê quán *
+            input(
+                type="text"
+                id="birthPlace"
+                name="birthPlace"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="address") Địa chỉ thường trú *
+            input(
+                type="text"
+                id="address"
+                name="address"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="jobDetail") Chi tiết công việc *
+
+            label(for="fullTime") Full-time
+            input(
+                type="radio"
+                name="jobDetail"
+                id="fullTime"
+                value="fullTime"
+                checked
+            )
+
+            label(for="partTime") Part-time
+            input(
+                type="radio"
+                name="jobDetail"
+                value="partTime"
+                id="partTime"
+            )
+        div(class="form-group" workingArea)
+            label(for="workingArea") Khu vực làm việc *
+            
+            label(for="province") Tỉnh/Thành phố 
+            select(name="province" id="province" chooseProvinceSelect)
+                option(disabled selected)
+                each item in locations 
+                    option(value=item.province) #{item.province}
+
+            label(for="district") Quận 
+                div(chooseDistricts)
+            
+        div(class="form-group")
+            label(for="yearOfExperience") Số năm kinh nghiệm *
+            input(
+                type="number"
+                id="yearOfExperience"
+                name="yearOfExperience"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            span Công việc *
+
+            each item in services
+                label(for="jobs") #{item.title} 
+                input(
+                    type="checkbox"
+                    name="jobs"
+                    value=item.id
+                    checked
+                ) 
+        div(class="form-group")
+            label(for="experienceDescription") Mô tả kinh nghiệm *
+            textarea(
+                class="form-control textarea-mce"
+                id="experienceDescription"
+                name="experienceDescription"
+                rows="5"
+            ) 
+        div(class="form-group")
+            label(for="baseFactor") Hệ số lương cơ bản *
+            select(class="form-control" name="baseFactor")
+                option(disabled selected) -- Chọn hệ số lương --
+                each item in costFactors 
+                    option(value=item.coefficient) #{item.title} - #{item.coefficient}
+        div(
+            class="form-group"
+            upload-image
+        )
+            label(for="avatar") Hình ảnh 
+            input(
+                type="file"
+                class="form-control-file"
+                id="avatar"
+                name="avatar"
+                accept="image/*"
+                upload-image-input
+            )
+            img(
+                src=""
+                class="image-preview"
+                upload-image-preview
+            )
+        div(
+            class="form-group"
+            upload-healthCertificate
+        )
+            label(for="healthCertificates") Giấy khám sức khỏe 
+            input(
+                type="file"
+                class="form-control-file"
+                id="healthCertificates"
+                name="healthCertificates"
+                accept="image/*"
+                multiple
+                upload-healthCertificate-input
+            )
+            div(upload-healthCertificate-preview)
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusActive"
+                name="status"
+                value="active"
+                checked
+            )
+            label(for="statusActive" class="form-check-label") Hoạt động
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusInActive"
+                name="status"
+                value="inactive"
+            )
+            label(for="statusInActive" class="form-check-label") Dừng hoạt động
+        div(class="form-group")
+            button(
+                type="submit"
+                class="btn btn-primary"
+            ) Tạo mới
+
+    script(src="/js/helper.js") 
+        

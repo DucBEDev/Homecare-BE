@@ -1,0 +1,131 @@
+extends ../../layouts/default.pug
+
+block main 
+    h1(class="mb-4") Thêm mới nhân viên
+
+    form(
+        action=`${prefixAdmin}/staffs/create`
+        method="POST"
+        enctype="multipart/form-data"
+    )
+        div(class="form-group")
+            label(for="staff_id") Chứng minh nhân dân *
+            input(
+                type="text"
+                id="staff_id"
+                name="staff_id"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="fullName") Họ tên *
+            input(
+                type="text"
+                id="fullName"
+                name="fullName"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+                label(for="password") Mật khẩu *
+                input(
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-control"
+                    required
+                )
+        div(class="form-group")
+            label(for="birthDate") Ngày sinh *
+            input(
+                type="date"
+                id="birthDate"
+                name="birthDate"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="phone") Số điện thoại *
+            input(
+                type="phone"
+                id="phone"
+                name="phone"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="email") Email *
+            input(
+                type="email"
+                id="email"
+                name="email"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="birthPlace") Quê quán *
+            input(
+                type="text"
+                id="birthPlace"
+                name="birthPlace"
+                class="form-control"
+                required 
+            )
+        div(class="form-group")
+            label(for="salary") Lương *
+            input(
+                type="text"
+                id="salary"
+                name="salary"
+                class="form-control"
+                required 
+            )
+        div(
+            class="form-group"
+            upload-image
+        )
+            label(for="avatar") Hình ảnh 
+            input(
+                type="file"
+                class="form-control-file"
+                id="avatar"
+                name="avatar"
+                accept="image/*"
+                upload-image-input
+            )
+            img(
+                src=""
+                class="image-preview"
+                upload-image-preview
+            )
+        div(class="form-group")
+            label(for="role_id") Phân quyền *
+            select(name="role_id" id="role" class="form-control")
+                option(selected disabled) -- Chọn phân quyền --
+                each item in roles 
+                    option(value=item.id) #{item.title}
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusActive"
+                name="status"
+                value="active"
+                checked
+            )
+            label(for="statusActive" class="form-check-label") Hoạt động
+        div(class="form-group form-check form-check-inline")
+            input(
+                type="radio"
+                class="form-check-input"
+                id="statusInActive"
+                name="status"
+                value="inactive"
+            )
+            label(for="statusInActive" class="form-check-label") Dừng hoạt động
+        div(class="form-group")
+            button(
+                type="submit"
+                class="btn btn-primary"
+            ) Tạo mới
+        

@@ -1,0 +1,64 @@
+mixin separatedPageNumber(totalPage, rangePages)
+    if (totalPage > rangePages)
+        li(class="page-item")
+            button(
+                class="page-link"
+                disabled
+            ) ...
+
+
+mixin showPage(currentPage, i) 
+    li(class=`page-item ${currentPage == i ? "active" : ""}`)
+        button(
+            class="page-link"
+            button-pagination=i
+        ) #{i}
+
+
+mixin pagination(pagination)
+    - currentPage=pagination.currentPage
+    - totalPage=pagination.totalPage
+    - rangePages=(totalPage > 5) ? 5 : totalPage
+
+    if (totalPage > 0)
+        nav     
+            ul(class="pagination")
+                if (currentPage > 1)
+                    li(class="page-item")
+                        button(
+                            class="page-link"
+                            button-pagination=currentPage - 1
+                        ) Trang trước
+
+                +showPage(currentPage, 1)
+
+                if (currentPage <= rangePages)
+                    - for (var i = 2; i < rangePages; i++) 
+                        +showPage(currentPage, i)
+                    +separatedPageNumber(totalPage, rangePages)
+
+                else if (totalPage - currentPage <= rangePages)
+                    +separatedPageNumber(totalPage, rangePages)
+                    - for (var i = (totalPage - rangePages); i < totalPage; i++) 
+                        +showPage(currentPage, i)
+
+                else 
+                    +separatedPageNumber(totalPage, rangePages)
+                    - for (var i = currentPage - 2; i <= currentPage + 2; i++) 
+                        +showPage(currentPage, i)
+                    +separatedPageNumber(totalPage, rangePages)
+                
+                if (totalPage != 1)
+                    li(class="page-item")
+                        button(
+                            class=`page-link ${currentPage == totalPage ? "active" : ""}`
+                            button-pagination=totalPage
+                        ) #{totalPage}
+                
+                if (currentPage < totalPage)
+                    li(class="page-item")
+                        button(
+                            class="page-link"
+                            button-pagination=currentPage + 1
+                        ) Kế tiếp
+        

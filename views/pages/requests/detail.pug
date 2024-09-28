@@ -1,0 +1,85 @@
+extends ../../layouts/default.pug
+include ../../mixins/moment.pug
+
+block main 
+    .card.mb-3 
+        .card-header Chi tiết đơn hàng
+        .card-body 
+            form(
+                action=`${prefixAdmin}/requests/updateHelperToRequest/${request.id}?_method=PATCH`
+                method="POST"
+            )
+                table(class="table table-hover table-sm") 
+                    .row 
+                        .col-6 
+                            | Họ và tên khách hàng: <b>#{request.customerInfo.fullName}</b>
+                        .col-6 
+                            | SĐT khách hàng: <b>#{request.customerInfo.phone}</b>
+                        .col-6 
+                            | Địa chỉ yêu cầu: <b>#{request.customerInfo.address}</b>
+                        .col-6 
+                            | Ngày đặt yêu cầu: <b>#{moment(request.orderDate).format("DD/MM/YYYY")}</b>
+                        .col-6 
+                            | Loại yêu cầu: 
+                            if (request.requestType == "shortTerm")
+                                | <b>Ngắn hạn</b>
+                            else 
+                                | <b>Dài hạn</b>
+                        .col-6
+                            if (request.requestType == "shortTerm") 
+                                | Ngày làm việc: <b>#{moment(request.startTime).format("DD/MM/YYYY")}</b>
+                            else 
+                                | Ngày làm việc: Từ <b>#{moment(request.startTime).format("DD/MM/YYYY")}</b> Đến <b>#{moment(request.endTime).format("DD/MM/YYYY")}</b>
+                        .col-6 
+                            | Thời gian làm việc: Từ <b>#{moment.utc(request.startTime).format("HH:mm")}</b> Đến <b>#{moment.utc(request.endTime).format("HH:mm")}</b>
+                        .col-6 
+                            | Dịch vụ: <b>#{service.title}</b>
+                        .col-6 
+                            | Trạng thái đơn hàng: 
+                            if (request.status == "notDone")
+                                | <b>Chưa thực hiện</b>
+                            else if (request.status == "done")
+                                | <b>Hoàn thành đơn hàng</b>
+                        .col-6 
+                            | Chi phí cơ bản: <b>#{objectRequestCost.baseCost} VNĐ</b>
+                        if (objectRequestCost.negotiationCosts != 0)
+                            .col-6 
+                                | Chi phí thỏa thuận: <b>#{objectRequestCost.negotiationCosts} VNĐ</b>
+                        .col-6 
+                            | Chi Phí Ngoài Giờ: <b>#{objectRequestCost.OTTotalCost} VNĐ (#{objectRequestCost.OTTotalHour} giờ)</b>
+                        .col-6 
+                            | Tổng Chi Phí: <b>#{objectRequestCost.TotalCost} VNĐ</b>
+                        .col-12 
+                            | Người giúp việc: 
+                            div(class="form-group")
+                                if (request.status == "done")
+                                    each item in helpers 
+                                        if (request.helper_id == item.id)
+                                            | <b>#{item.fullName}</b>
+                                else
+                                    select(class="form-control" name="helper_id")
+                                        option(disabled selected) -- Chọn người giúp việc --
+                                        each item in helpers 
+                                            option(
+                                                value=item.id
+                                                selected=(request.helper_id == item.id) ? true : false
+                                            ) #{item.fullName}
+
+                if (request.status != "done")
+                    if (!request.helper_id)
+                        button(
+                            type="submit"
+                            class="btn btn-primary"
+                        ) Giao việc
+                    else 
+                        button(
+                            type="submit"
+                            class="btn btn-primary"
+                        ) Cập nhật
+
+                        a(
+                            href=`${prefixAdmin}/requests/updateRequestDone/${request.id}`
+                            class="btn btn-success"
+                        ) Hoàn thành đơn
+
+        
