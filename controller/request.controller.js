@@ -87,41 +87,60 @@ function calculateRequestCost(request, service) {
 //     });
 // }
 
+
+async function getService(records) {
+    const updatedRecords = [];
+    for (let record of records) {
+        try {
+            const service = await Service.findOne({
+                _id: record.service_id,
+                status: "active"
+            }).select("title");
+            
+            record = record.toObject(); 
+            record.serviceTitle = service.title;
+            updatedRecords.push(record);
+        } catch (error) {
+            console.error(`Error fetching service for record ${record._id}:`, error);
+            record = record.toObject();
+            record.serviceTitle = 'N/A';
+            updatedRecords.push(record);
+        }
+    }
+    return updatedRecords;
+}
+
 module.exports.index = async (req, res) => {
     try {
-        const undeterminedCosts = await Request.find({
+        const status = req.query.status;
+
+        const records = await Request.find({
             deleted: false,
-            status: "pending"
+            status: status
         });
 
-        const processingRequests = await Request.find({
-            deleted: false,
-            status: "notDone"
-        });
-
-        const historyRequests = await Request.find({
-            deleted: false,
-            status: "done"
-        });
-
-        processingRequests.forEach(request => {
+        records.forEach((request) => {
+            // Auto update status in real-time
             const startTime = moment(request.startTime).utc();
             const endTime = moment(request.endTime).utc();
             const now = moment().utc().add(7, 'hours');
 
             if (now.isBetween(startTime, endTime)) {
                 request.status = "unconfirmed";
-            } else if (now.isAfter(endTime)) {
+            } 
+            else if (now.isAfter(endTime)) {
                 request.status = "done";
-            } else if (request.helper_id) {
+            } 
+            else if (request.helper_id) {
                 request.status = "assigned";
             }
+            // End Auto update status in real-time
         });
+        
+        const updatedRecords = await getService(records);
 
         res.json({
-            undeterminedCosts,
-            processingRequests,
-            historyRequests
+            updatedRecords
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
