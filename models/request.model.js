@@ -1,19 +1,26 @@
-const mongoose = require("mongoose");
-
 const requestSchema = new mongoose.Schema({
     orderDate: {
         type: Date,
         default: Date.now()
     },
-    startTime: Date,
-    endTime: Date,
+    schedule:{
+        startTime: Date,
+        endTime: Date,
+        dates:[
+            {   
+                date: Date,
+                helper_id:String
+            }
+        ]
+    },
+    
     staff_id: String,
-    helper_id: String,
     comment: {
         review: String,
         loseThings: Boolean,
         breakThings: Boolean
     },
+    customer_id: String,
     customerInfo: {
         fullName: String,
         phone: String,
@@ -57,7 +64,3 @@ const requestSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
-
-const Request = mongoose.model("Request", requestSchema, "requests");
-
-module.exports = Request;

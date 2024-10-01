@@ -44,48 +44,48 @@ function calculateRequestCost(request, service) {
 
 
 // [GET] /admin/requests
-// module.exports.index = async (req, res) => {
-//     const undeterminedCosts = await Request.find({
-//         deleted: false,
-//         status: "pending"
-//     });
+module.exports.index = async (req, res) => {
+    const undeterminedCosts = await Request.find({
+        deleted: false,
+        status: "pending"
+    });
 
-//     const processingRequests = await Request.find({
-//         deleted: false,
-//         status: "notDone"
-//     });
+    const processingRequests = await Request.find({
+        deleted: false,
+        status: "notDone"
+    });
 
-//     const historyRequests = await Request.find({
-//         deleted: false,
-//         status: "done"
-//     });
+    const historyRequests = await Request.find({
+        deleted: false,
+        status: "done"
+    });
 
-//     processingRequests.map(request => {
-//         const startTime = moment(request.startTime).utc(); 
-//         const endTime = moment(request.endTime).utc(); 
+    processingRequests.map(request => {
+        const startTime = moment(request.startTime).utc(); 
+        const endTime = moment(request.endTime).utc(); 
 
-//         // Get the current time
-//         const now = moment().utc();
-//         now.add(7, 'hours');
+        // Get the current time
+        const now = moment().utc();
+        now.add(7, 'hours');
 
-//         if (now.isBetween(startTime, endTime)) {
-//             request.status = "unconfirmed";
-//         }
-//         else if (now.isAfter(startTime, endTime)) {
-//             request.status = "done";
-//         }
-//         else if (request.helper_id) {
-//             request.status = "assigned";
-//         }
-//     });
+        if (now.isBetween(startTime, endTime)) {
+            request.status = "unconfirmed";
+        }
+        else if (now.isAfter(startTime, endTime)) {
+            request.status = "done";
+        }
+        else if (request.helper_id) {
+            request.status = "assigned";
+        }
+    });
 
-//     res.render('pages/requests/index', {
-//         pageTitle: "Quản lý đơn hàng",
-//         undeterminedCosts: undeterminedCosts,
-//         processingRequests: processingRequests,
-//         historyRequests: historyRequests,
-//     });
-// }
+    res.render('pages/requests/index', {
+        pageTitle: "Quản lý đơn hàng",
+        undeterminedCosts: undeterminedCosts,
+        processingRequests: processingRequests,
+        historyRequests: historyRequests,
+    });
+}
 
 
 async function getService(records) {
@@ -110,42 +110,42 @@ async function getService(records) {
     return updatedRecords;
 }
 
-module.exports.index = async (req, res) => {
-    try {
-        const status = req.query.status;
+// module.exports.index = async (req, res) => {
+//     try {
+//         const status = req.query.status;
 
-        const records = await Request.find({
-            deleted: false,
-            status: status
-        });
+//         const records = await Request.find({
+//             deleted: false,
+//             status: status
+//         });
 
-        records.forEach((request) => {
-            // Auto update status in real-time
-            const startTime = moment(request.startTime).utc();
-            const endTime = moment(request.endTime).utc();
-            const now = moment().utc().add(7, 'hours');
+//         records.forEach((request) => {
+//             // Auto update status in real-time
+//             const startTime = moment(request.startTime).utc();
+//             const endTime = moment(request.endTime).utc();
+//             const now = moment().utc().add(7, 'hours');
 
-            if (now.isBetween(startTime, endTime)) {
-                request.status = "unconfirmed";
-            } 
-            else if (now.isAfter(endTime)) {
-                request.status = "done";
-            } 
-            else if (request.helper_id) {
-                request.status = "assigned";
-            }
-            // End Auto update status in real-time
-        });
+//             if (now.isBetween(startTime, endTime)) {
+//                 request.status = "unconfirmed";
+//             } 
+//             else if (now.isAfter(endTime)) {
+//                 request.status = "done";
+//             } 
+//             else if (request.helper_id) {
+//                 request.status = "assigned";
+//             }
+//             // End Auto update status in real-time
+//         });
         
-        const updatedRecords = await getService(records);
+//         const updatedRecords = await getService(records);
 
-        res.json({
-            updatedRecords
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
+//         res.json({
+//             updatedRecords
+//         });
+//     } catch (error) {
+//         res.status(500).json({ error: 'An error occurred while fetching requests' });
+//     }
+// }
 
 // [GET] /admin/requests/create
 module.exports.create = async (req, res) => {
