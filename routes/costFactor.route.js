@@ -10,5 +10,7 @@ router.get('/edit/:id', controller.edit);
 router.patch('/edit/:id', controller.editPatch);
 router.delete('/delete/:id', controller.deleteItem);
 router.patch("/change-status/:status/:id", controller.changeStatus);
+router.get('/addType', controller.addType);
+router.post('/addType', controller.addTypePost);
 
 module.exports = router;

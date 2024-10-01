@@ -14,6 +14,7 @@ const formatDateHelper = require("../helpers/formatDate");
 // Libs
 const moment = require("moment");
 
+
 function calculateRequestCost(request, service) {
     const daysDiff = Math.ceil((request.endTime.getTime() - request.startTime.getTime()) / (1000 * 3600 * 24));
     const hoursDiff = Math.ceil(request.endTime.getUTCHours() - request.startTime.getUTCHours());
@@ -41,7 +42,6 @@ function calculateRequestCost(request, service) {
         TotalCost: baseCost + OTTotalCost + request.negotiationCosts
     };
 }
-
 
 // [GET] /admin/requests
 module.exports.index = async (req, res) => {

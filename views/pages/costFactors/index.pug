@@ -8,6 +8,63 @@ block main
     h1 Hệ số chi phí
 
     .card.mb-3 
+        .card-header Danh sách loại hệ số
+        .card-body 
+            .row 
+                .col-6
+                .col-6  
+                    a(
+                        href=`${prefixAdmin}/costFactors/addType`
+                        class="btn btn-outline-success"
+                    ) +Thêm mới
+            .row
+                table(
+                    class="table table-hover table-sm mt-4"
+                )
+                    thead   
+                        tr 
+                            th STT 
+                            th Loại
+                            th Mô tả 
+                            th Trạng thái
+                            //- th Hoạt động
+                        
+                    tbody 
+                        if (costFactorTypes.length > 0)
+                            each item, index in costFactorTypes 
+                                tr 
+                                    td #{index + 1}
+                                    td #{item.title}
+                                    td #{item.description}
+                                    td 
+                                        if (item.status == "active")
+                                            a(
+                                                href="javascript:;" 
+                                                button-change-status
+                                                data-status=item.status
+                                                data-id=item.id
+                                                class="badge bg-success"
+                                            ) Hoạt động
+                                        else 
+                                            a(
+                                                href="javascript:;" 
+                                                button-change-status
+                                                data-status=item.status
+                                                data-id=item.id
+                                                class="badge bg-danger"
+                                            ) Không hoạt động
+                                    //- td 
+                                    //-     a(
+                                    //-         href=`${prefixAdmin}/costFactors/edit/${item.id}`
+                                    //-         class="btn btn-warning btn-sm mr-1"
+                                    //-     ) Sửa
+                                    //-     button(
+                                    //-         class="btn btn-danger btn-sm mr-1"
+                                    //-         button-delete
+                                    //-         data-id=item.id
+                                    //-     ) Xóa
+
+    .card.mb-3 
         .card-header Danh sách
         .card-body 
             .row 
@@ -17,7 +74,6 @@ block main
                         href=`${prefixAdmin}/costFactors/create`
                         class="btn btn-outline-success"
                     ) +Thêm mới
-            
             .row
                 table(
                     class="table table-hover table-sm mt-4"
@@ -28,6 +84,7 @@ block main
                             th Tên
                             th Mô tả 
                             th Hệ số
+                            th Loại
                             th Trạng thái
                             th Hoạt động
                         
@@ -39,6 +96,7 @@ block main
                                     td #{item.title}
                                     td #{item.description}
                                     td #{item.coefficient}
+                                    td #{item.type.title}
                                     td 
                                         if (item.status == "active")
                                             a(

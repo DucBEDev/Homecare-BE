@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 const requestSchema = new mongoose.Schema({
     orderDate: {
         type: Date,
@@ -64,3 +66,7 @@ const requestSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+const Request = mongoose.model("Request", requestSchema, "requests");
+
+module.exports = Request;

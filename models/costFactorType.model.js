@@ -1,11 +1,9 @@
 const mongoose = require('mongoose');
 
-const costFactorSchema = new mongoose.Schema({
+const costFactorTypeSchema = new mongoose.Schema({
     title: String,
     description: String,
-    coefficient: Number, //He so luong
     status: String,
-    coefficientType_id: String,
     deleted: {
         type: Boolean,
         default: false
@@ -31,6 +29,6 @@ const costFactorSchema = new mongoose.Schema({
     timestamps: true
 });
 
-const CostFactor = mongoose.model("CostFactor", costFactorSchema, "costFactors");
+const CostFactorType = mongoose.model("CostFactorType", costFactorTypeSchema, "costFactorTypes");
 
-module.exports = CostFactor;
+module.exports = CostFactorType;

@@ -4,7 +4,7 @@ block main
     h1(class="mb-4") Thêm mới hệ số chi phí
 
     form(
-        action=`${prefixAdmin}/costFactors/create`
+        action=`${prefixAdmin}/costFactors/addType`
         method="POST"
     )
         div(class="form-group")
@@ -24,20 +24,6 @@ block main
                 id="desc"
                 name="description"
             )
-        div(class="form-group")
-            label(for="coefficient") Hệ số
-            input(
-                type="text"
-                class="form-control"
-                id="coefficient"
-                name="coefficient"
-            )
-        div(class="form-group")
-            label(for="coefficientType_id") Loại hệ số *
-            select(class="form-control" name="coefficientType_id")
-                option(disabled selected) -- Chọn --
-                each item in costFactorTypes 
-                    option(value=item.id) #{item.title}
         div(class="form-group form-check form-check-inline")
             input(
                 type="radio"
