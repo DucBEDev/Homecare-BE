@@ -25,19 +25,19 @@ block main
                 name="description"
             )
         div(class="form-group")
-            label(for="coefficient") Hệ số
+            label(for="value") Hệ số
             input(
                 type="text"
                 class="form-control"
-                id="coefficient"
-                name="coefficient"
+                id="value"
+                name="value"
             )
         div(class="form-group")
-            label(for="coefficientType_id") Loại hệ số *
-            select(class="form-control" name="coefficientType_id")
+            label(for="applyTo") Loại hệ số *
+            select(class="form-control" name="applyTo")
                 option(disabled selected) -- Chọn --
                 each item in costFactorTypes 
-                    option(value=item.id) #{item.title}
+                    option(value=item.applyTo) #{item.title}
         div(class="form-group form-check form-check-inline")
             input(
                 type="radio"

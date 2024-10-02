@@ -2,7 +2,7 @@
 const Location = require("../models/location.model");
 const Helper = require("../models/helper.model");
 const Service = require("../models/service.model");
-const CostFactor = require("../models/costFactor.model");
+const CostFactorType = require("../models/costFactorType.model");
 
 // Config
 const systemConfig = require("../config/system");
@@ -72,7 +72,7 @@ module.exports.index = async (req, res) => {
 module.exports.create = async (req, res) => {
     const locations = await Location.find({});
     const services = await Service.find({ deleted: false });
-    const costFactors = await CostFactor.find({ status: "active" });
+    const costFactors = await CostFactorType.find({ status: "active" });
 
     res.render('pages/helpers/create', {
         pageTitle: "Thêm người giúp việc",
@@ -225,7 +225,7 @@ module.exports.edit = async (req, res) => {
     const locations = await Location.find({});
     const newBirthDate = formatDateHelper(helper.birthDate);
     const services = await Service.find({ deleted: false });
-    const costFactors = await CostFactor.find({ status: "active" });
+    const costFactors = await CostFactorType.find({ status: "active" });
 
     res.render("pages/helpers/edit", {
         pageTitle: "Chỉnh sửa thông tin người giúp việc",

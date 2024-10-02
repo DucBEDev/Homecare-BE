@@ -23,17 +23,15 @@ block main
                 )
                     thead   
                         tr 
-                            th STT 
                             th Loại
                             th Mô tả 
                             th Trạng thái
-                            //- th Hoạt động
+                            th Hoạt động
                         
                     tbody 
-                        if (costFactorTypes.length > 0)
-                            each item, index in costFactorTypes 
+                        if (costFactorLists.length > 0)
+                            each item in costFactorLists 
                                 tr 
-                                    td #{index + 1}
                                     td #{item.title}
                                     td #{item.description}
                                     td 
@@ -42,7 +40,7 @@ block main
                                                 href="javascript:;" 
                                                 button-change-status
                                                 data-status=item.status
-                                                data-id=item.id
+                                                data-id=item._id
                                                 class="badge bg-success"
                                             ) Hoạt động
                                         else 
@@ -50,19 +48,19 @@ block main
                                                 href="javascript:;" 
                                                 button-change-status
                                                 data-status=item.status
-                                                data-id=item.id
+                                                data-id=item._id
                                                 class="badge bg-danger"
                                             ) Không hoạt động
-                                    //- td 
-                                    //-     a(
-                                    //-         href=`${prefixAdmin}/costFactors/edit/${item.id}`
-                                    //-         class="btn btn-warning btn-sm mr-1"
-                                    //-     ) Sửa
-                                    //-     button(
-                                    //-         class="btn btn-danger btn-sm mr-1"
-                                    //-         button-delete
-                                    //-         data-id=item.id
-                                    //-     ) Xóa
+                                    td 
+                                        a(
+                                            href=`${prefixAdmin}/costFactors/edit/${item._id}`
+                                            class="btn btn-warning btn-sm mr-1"
+                                        ) Sửa
+                                        button(
+                                            class="btn btn-danger btn-sm mr-1"
+                                            button-delete
+                                            data-id=item._id
+                                        ) Xóa
 
     .card.mb-3 
         .card-header Danh sách
@@ -80,7 +78,6 @@ block main
                 )
                     thead   
                         tr 
-                            th STT 
                             th Tên
                             th Mô tả 
                             th Hệ số
@@ -89,41 +86,47 @@ block main
                             th Hoạt động
                         
                     tbody 
-                        if (records.length > 0)
-                            each item, index in records 
-                                tr 
-                                    td #{index + 1}
-                                    td #{item.title}
-                                    td #{item.description}
-                                    td #{item.coefficient}
-                                    td #{item.type.title}
-                                    td 
-                                        if (item.status == "active")
+                        if (costFactorLists.length > 0)
+                            each costFactor in costFactorLists 
+                                each item in costFactor.newCoefficientList 
+                                    tr 
+                                        td #{item.title}
+                                        td #{item.description}
+                                        td #{item.value}
+                                        td 
+                                            if (costFactor.applyTo == "helper")
+                                                | Người giúp việc
+                                            else if (costFactor.applyTo == "service")
+                                                | Dịch vụ
+                                            else if (costFactor.applyTo == "other")
+                                                | Khác
+                                        td 
+                                            if (item.status == "active")
+                                                a(
+                                                    href="javascript:;" 
+                                                    button-change-status
+                                                    data-status=item.status
+                                                    data-id=item._id
+                                                    class="badge bg-success"
+                                                ) Hoạt động
+                                            else 
+                                                a(
+                                                    href="javascript:;" 
+                                                    button-change-status
+                                                    data-status=item.status
+                                                    data-id=item._id
+                                                    class="badge bg-danger"
+                                                ) Không hoạt động
+                                        td 
                                             a(
-                                                href="javascript:;" 
-                                                button-change-status
-                                                data-status=item.status
-                                                data-id=item.id
-                                                class="badge bg-success"
-                                            ) Hoạt động
-                                        else 
-                                            a(
-                                                href="javascript:;" 
-                                                button-change-status
-                                                data-status=item.status
-                                                data-id=item.id
-                                                class="badge bg-danger"
-                                            ) Không hoạt động
-                                    td 
-                                        a(
-                                            href=`${prefixAdmin}/costFactors/edit/${item.id}`
-                                            class="btn btn-warning btn-sm mr-1"
-                                        ) Sửa
-                                        button(
-                                            class="btn btn-danger btn-sm mr-1"
-                                            button-delete
-                                            data-id=item.id
-                                        ) Xóa
+                                                href=`${prefixAdmin}/costFactors/edit/${item._id}`
+                                                class="btn btn-warning btn-sm mr-1"
+                                            ) Sửa
+                                            button(
+                                                class="btn btn-danger btn-sm mr-1"
+                                                button-delete
+                                                data-id=item._id
+                                            ) Xóa
                         else 
                             tr 
                                 td(colspan="4" class="text-center") Chưa có hệ số chi phí nào được tạo

@@ -9,7 +9,7 @@ const helperRoutes = require("./helper.route");
 const roleRoutes = require("./role.route");
 const serviceRoutes = require("./service.route");
 const requestRoutes = require("./request.route");
-const costFactorRoutes = require("./costFactor.route");
+const costFactorTypeRoutes = require("./costFactorType.route");
 const customerRoutes = require("./customer.route");
 
 module.exports = (app) => {
@@ -22,6 +22,6 @@ module.exports = (app) => {
     app.use(PATH_ADMIN + '/roles', roleRoutes);
     app.use(PATH_ADMIN + '/services', serviceRoutes);
     app.use(PATH_ADMIN + '/requests', requestRoutes);
-    app.use(PATH_ADMIN + '/costFactors', costFactorRoutes);
+    app.use(PATH_ADMIN + '/costFactors', costFactorTypeRoutes);
     app.use(PATH_ADMIN + '/customers', customerRoutes);
 }

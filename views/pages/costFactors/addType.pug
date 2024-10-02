@@ -24,6 +24,13 @@ block main
                 id="desc"
                 name="description"
             )
+        div(class="form-group")
+            label(for="applyTo") Loại đối tượng *
+            select(class="form-control" name="applyTo")
+                option(disabled selected) -- Chọn --
+                option(value="helper") Người giúp việc
+                option(value="service") Dịch vụ
+                option(value="other") Khác
         div(class="form-group form-check form-check-inline")
             input(
                 type="radio"
