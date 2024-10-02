@@ -26,46 +26,15 @@ block main
                 required 
             )
         div(class="form-group")
-            label Phụ phí: *
-            div(class="form-group form-check form-check-inline")
-                input(
-                    type="radio"
-                    class="form-check-input"
-                    name="extraFee"
-                    value="yes"
-                    checked
-                )
-                label(class="form-check-label") Có
-            div(class="form-group form-check form-check-inline")
-                input(
-                    type="radio"
-                    class="form-check-input"
-                    name="extraFee"
-                    value="no"
-                )
-                label(class="form-check-label") Không
-        div(class="form-group")
-            label(for="overTimePrice_Helper") Phí Ngoài Giờ KH ( % ): *
-            input(
-                type="text"
-                id="overTimePrice_Helper"
-                name="overTimePrice_Helper"
-                class="form-control"
-                required 
-            )
-        div(class="form-group")
-            label(for="overTimePrice_Customer") Phí Ngoài Giờ NGV ( % ): *
-            input(
-                type="text"
-                id="overTimePrice_Customer"
-                name="overTimePrice_Customer"
-                class="form-control"
-                required 
-            )
+            label(for="coefficient_id") Hệ số dịch vụ *
+            select(class="form-control" name="coefficient_id")
+                option(disabled selected) -- Chọn hệ số dịch vụ --
+                each item in coefficientList 
+                    option(value=item.id) #{item.title}
         div(class="form-group")
             label(for="description") Mô tả dịch vụ: 
             textarea(
-                class="form-control textarea-mce"
+                class="form-control"
                 id="description"
                 name="description"
                 rows="5"

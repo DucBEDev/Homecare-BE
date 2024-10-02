@@ -1,5 +1,6 @@
 // Models
 const Service = require("../models/service.model");
+const CostFactorType = require("../models/costFactorType.model");
 
 // Config
 const systemConfig = require("../config/system");
@@ -66,16 +67,22 @@ module.exports.index = async (req, res) => {
 
 // [GET] /admin/services/create
 module.exports.create = async (req, res) => {
+    const records = await CostFactorType.findOne(
+        { 
+            deleted: false,
+            applyTo: "service"
+        }
+    ).select("coefficientList");
+
     res.render('pages/services/create', {
-        pageTitle: "Thêm dịch vụ"
+        pageTitle: "Thêm dịch vụ",
+        coefficientList: records.coefficientList
     });
 }
 
 // [POST] /admin/services/create
 module.exports.createPost = async (req, res) => {
     req.body.basicPrice = parseInt(req.body.basicPrice);
-    req.body.overTimePrice_Helper = parseInt(req.body.overTimePrice_Helper);
-    req.body.overTimePrice_Customer = parseInt(req.body.overTimePrice_Customer);
 
     const service = new Service(req.body);
     await service.save();
@@ -154,9 +161,17 @@ module.exports.edit = async (req, res) => {
         { deleted: false }
     );
 
+    const records = await CostFactorType.findOne(
+        { 
+            deleted: false,
+            applyTo: "service"
+        }
+    ).select("coefficientList");
+
     res.render("pages/services/edit", {
         pageTitle: "Sửa dịch vụ",
-        service: service
+        service: service,
+        coefficientList: records.coefficientList
     })
 }
 

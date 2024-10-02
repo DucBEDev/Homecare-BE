@@ -28,45 +28,13 @@ block main
                 required 
             )
         div(class="form-group")
-            label Phụ phí: *
-            div(class="form-group form-check form-check-inline")
-                input(
-                    type="radio"
-                    class="form-check-input"
-                    name="extraFee"
-                    value="yes"
-                    checked=(service.extraFee == "yes" ? true : false)
-                )
-                label(class="form-check-label") Có
-            div(class="form-group form-check form-check-inline")
-                input(
-                    type="radio"
-                    class="form-check-input"
-                    name="extraFee"
-                    value="no"
-                    checked=(service.extraFee == "no" ? true : false)
-                )
-                label(class="form-check-label") Không
-        div(class="form-group")
-            label(for="overTimePrice_Helper") Phí Ngoài Giờ KH ( % ): *
-            input(
-                type="text"
-                id="overTimePrice_Helper"
-                name="overTimePrice_Helper"
-                class="form-control"
-                value=service.overTimePrice_Helper
-                required 
-            )
-        div(class="form-group")
-            label(for="overTimePrice_Customer") Phí Ngoài Giờ NGV ( % ): *
-            input(
-                type="text"
-                id="overTimePrice_Customer"
-                name="overTimePrice_Customer"
-                class="form-control"
-                value=service.overTimePrice_Customer
-                required 
-            )
+            label(for="coefficient_id") Hệ số dịch vụ *
+            select(class="form-control" name="coefficient_id")
+                each item in coefficientList 
+                    option(
+                        value=item.id
+                        selected=(item.id == service.coefficient_id) ? true : false
+                    ) #{item.title}
         div(class="form-group")
             label(for="description") Mô tả dịch vụ: 
             textarea(
