@@ -169,8 +169,8 @@ block main
             label(for="baseFactor") Hệ số lương cơ bản *
             select(class="form-control" name="baseFactor")
                 option(disabled selected) -- Chọn hệ số lương --
-                each item in costFactors 
-                    option(value=item.coefficient) #{item.title} - #{item.coefficient}
+                each item in coefficientList 
+                    option(value=item.value) #{item.title}
         div(
             class="form-group"
             upload-image

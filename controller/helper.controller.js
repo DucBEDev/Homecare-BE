@@ -72,13 +72,18 @@ module.exports.index = async (req, res) => {
 module.exports.create = async (req, res) => {
     const locations = await Location.find({});
     const services = await Service.find({ deleted: false });
-    const costFactors = await CostFactorType.find({ status: "active" });
+    const costFactors = await CostFactorType.findOne(
+        { 
+            status: "active",
+            applyTo: "helper" 
+        }
+    ).select("coefficientList");
 
     res.render('pages/helpers/create', {
         pageTitle: "Thêm người giúp việc",
         locations: locations,
         services: services,
-        costFactors: costFactors
+        coefficientList: costFactors.coefficientList
     });
 }
 
@@ -225,7 +230,12 @@ module.exports.edit = async (req, res) => {
     const locations = await Location.find({});
     const newBirthDate = formatDateHelper(helper.birthDate);
     const services = await Service.find({ deleted: false });
-    const costFactors = await CostFactorType.find({ status: "active" });
+    const costFactors = await CostFactorType.findOne(
+        { 
+            status: "active",
+            applyTo: "helper" 
+        }
+    ).select("coefficientList");
 
     res.render("pages/helpers/edit", {
         pageTitle: "Chỉnh sửa thông tin người giúp việc",
@@ -233,7 +243,7 @@ module.exports.edit = async (req, res) => {
         newBirthDate: newBirthDate,
         locations: locations,
         services: services,
-        costFactors: costFactors
+        coefficientList: costFactors.coefficientList
     })
 }
 

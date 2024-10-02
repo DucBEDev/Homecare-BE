@@ -204,11 +204,12 @@ block main
         div(class="form-group")
             label(for="baseFactor") Hệ số lương cơ bản *
             select(class="form-control" name="baseFactor")
-                each item in costFactors 
+                option(disabled selected) -- Chọn hệ số lương --
+                each item in coefficientList 
                     option(
-                        value=item.coefficient
-                        selected=(item.coefficient == helper.baseFactor ? true : false)
-                    ) #{item.title} - #{item.coefficient}
+                        value=item.value
+                        selected=(item.value == helper.baseFactor ? true : false)
+                    ) #{item.title}
         div(
             class="form-group"
             upload-image
