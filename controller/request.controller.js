@@ -1,9 +1,11 @@
 // Models
 const Request = require("../models/request.model");
+const RequestDetail = require("../models/requestDetail.model");
 const Location = require("../models/location.model");
 const Service = require("../models/service.model");
 const Helpers = require("../models/helper.model");
 const Customer = require("../models/customer.model");
+const CostFactorType = require("../models/costFactorType.model");
 
 // Config 
 const systemConfig = require("../config/system");
@@ -14,138 +16,122 @@ const formatDateHelper = require("../helpers/formatDate");
 // Libs
 const moment = require("moment");
 
-
-function calculateRequestCost(request, service) {
-    const daysDiff = Math.ceil((request.endTime.getTime() - request.startTime.getTime()) / (1000 * 3600 * 24));
-    const hoursDiff = Math.ceil(request.endTime.getUTCHours() - request.startTime.getUTCHours());
-
-    const baseCost = service.basicPrice * hoursDiff * daysDiff;
-    
+// Function 
+function calculateRequestCost(startTime, endTime, basicPrice, coefficient_OT) {
+    const daysDiff = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 3600 * 24));
+    const hoursDiff = Math.ceil(endTime.getUTCHours() - startTime.getUTCHours());
+    const baseCost = basicPrice * hoursDiff * daysDiff;
     const eightAM = 8;
     const sixPM = 18;
-    const OTStartTime = Math.ceil(eightAM - request.startTime.getUTCHours());
-    const OTEndTime = Math.ceil(sixPM - request.endTime.getUTCHours());
+    const OTStartTime = Math.ceil(eightAM - startTime.getUTCHours());
+    const OTEndTime = Math.ceil(sixPM - endTime.getUTCHours());
+    const defaultCoefficient = 1;
     let OTTotalHour = 0;
+
     if (OTStartTime > 0) {
         OTTotalHour += OTStartTime;
     }
     if (OTEndTime < 0) {
         OTTotalHour += Math.abs(OTEndTime);
     }
-    const OTTotalCost = service.overTimePrice_Customer * 0.01 * service.basicPrice * OTTotalHour * daysDiff;
 
-    return objectRequestCost = {
-        baseCost: baseCost,
-        OTTotalHour: OTTotalHour * daysDiff,
-        OTTotalCost: OTTotalCost,
-        negotiationCosts: request.negotiationCosts,
-        TotalCost: baseCost + OTTotalCost + request.negotiationCosts
-    };
+    const OTTotalCost = Math.floor((coefficient_OT - defaultCoefficient) * basicPrice * OTTotalHour * daysDiff);
+    const TotalCost = baseCost + OTTotalCost; //Tiền khách hàng trả
+
+    return TotalCost;
 }
+
+function convertDateTime(queryDate, queryTime) {
+    const time = moment(queryDate);
+    const timeTemp = parseInt(queryTime);
+    // Create time
+    time.hour(Math.floor(timeTemp / 60))
+            .minute(timeTemp % 60)
+            .second(0)
+            .millisecond(0);
+    // Add 7 hours (VN is UTC +7)
+    time.add(7, 'hours');
+    // Convert to Date 
+    return time.toDate();
+} 
+
 
 // [GET] /admin/requests
-module.exports.index = async (req, res) => {
-    const undeterminedCosts = await Request.find({
-        deleted: false,
-        status: "pending"
-    });
-
-    const processingRequests = await Request.find({
-        deleted: false,
-        status: "notDone"
-    });
-
-    const historyRequests = await Request.find({
-        deleted: false,
-        status: "done"
-    });
-
-    processingRequests.map(request => {
-        const startTime = moment(request.startTime).utc(); 
-        const endTime = moment(request.endTime).utc(); 
-
-        // Get the current time
-        const now = moment().utc();
-        now.add(7, 'hours');
-
-        if (now.isBetween(startTime, endTime)) {
-            request.status = "unconfirmed";
-        }
-        else if (now.isAfter(startTime, endTime)) {
-            request.status = "done";
-        }
-        else if (request.helper_id) {
-            request.status = "assigned";
-        }
-    });
-
-    res.render('pages/requests/index', {
-        pageTitle: "Quản lý đơn hàng",
-        undeterminedCosts: undeterminedCosts,
-        processingRequests: processingRequests,
-        historyRequests: historyRequests,
-    });
-}
-
-
-async function getService(records) {
-    const updatedRecords = [];
-    for (let record of records) {
-        try {
-            const service = await Service.findOne({
-                _id: record.service_id,
-                status: "active"
-            }).select("title");
-            
-            record = record.toObject(); 
-            record.serviceTitle = service.title;
-            updatedRecords.push(record);
-        } catch (error) {
-            console.error(`Error fetching service for record ${record._id}:`, error);
-            record = record.toObject();
-            record.serviceTitle = 'N/A';
-            updatedRecords.push(record);
-        }
-    }
-    return updatedRecords;
-}
-
 // module.exports.index = async (req, res) => {
-//     try {
-//         const status = req.query.status;
+//     const undeterminedCosts = await Request.find({
+//         deleted: false,
+//         status: "pending"
+//     });
 
-//         const records = await Request.find({
-//             deleted: false,
-//             status: status
-//         });
+//     const processingRequests = await Request.find({
+//         deleted: false,
+//         status: "notDone"
+//     });
 
-//         records.forEach((request) => {
-//             // Auto update status in real-time
-//             const startTime = moment(request.startTime).utc();
-//             const endTime = moment(request.endTime).utc();
-//             const now = moment().utc().add(7, 'hours');
+//     const historyRequests = await Request.find({
+//         deleted: false,
+//         status: "done"
+//     });
 
-//             if (now.isBetween(startTime, endTime)) {
-//                 request.status = "unconfirmed";
-//             } 
-//             else if (now.isAfter(endTime)) {
-//                 request.status = "done";
-//             } 
-//             else if (request.helper_id) {
-//                 request.status = "assigned";
-//             }
-//             // End Auto update status in real-time
-//         });
-        
-//         const updatedRecords = await getService(records);
+//     processingRequests.map(request => {
+//         const startTime = moment(request.startTime).utc(); 
+//         const endTime = moment(request.endTime).utc(); 
 
-//         res.json({
-//             updatedRecords
-//         });
-//     } catch (error) {
-//         res.status(500).json({ error: 'An error occurred while fetching requests' });
-//     }
+//         // Get the current time
+//         const now = moment().utc();
+//         now.add(7, 'hours');
+
+//         if (now.isBetween(startTime, endTime)) {
+//             request.status = "unconfirmed";
+//         }
+//         else if (now.isAfter(startTime, endTime)) {
+//             request.status = "done";
+//         }
+//         else if (request.helper_id) {
+//             request.status = "assigned";
+//         }
+//     });
+
+//     res.render('pages/requests/index', {
+//         pageTitle: "Quản lý đơn hàng",
+//         undeterminedCosts: undeterminedCosts,
+//         processingRequests: processingRequests,
+//         historyRequests: historyRequests,
+//     });
 // }
+
+module.exports.index = async (req, res) => {
+    try {
+        const status = req.query.status;
+
+        const records = await Request.find({
+            deleted: false,
+            status: status
+        });
+
+        records.forEach((request) => {
+            // Auto update status in real-time
+            const startTime = moment(request.startTime).utc();
+            const endTime = moment(request.endTime).utc();
+            const now = moment().utc().add(7, 'hours');
+
+            if (now.isBetween(startTime, endTime)) {
+                request.status = "unconfirmed";
+            } 
+            else if (now.isAfter(endTime)) {
+                request.status = "done";
+            } 
+            // End Auto update status in real-time
+        });
+        console.log(records)
+
+        res.json({
+            updatedRecords
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
 
 // [GET] /admin/requests/create
 module.exports.create = async (req, res) => {
@@ -154,16 +140,45 @@ module.exports.create = async (req, res) => {
         deleted: false,
         status: "active"
     });
+    const records = await CostFactorType.find(
+        { 
+            deleted: false,
+            applyTo: { $in: ["service", "other"] } 
+        }
+    ).select("coefficientList applyTo");
 
     res.render('pages/requests/create', {
         pageTitle: "Thêm đơn hàng",
         locations: locations,
-        services: services
+        services: services,
+        coefficientLists: records
     });
 }
 
 // [POST] /admin/requests/create
 module.exports.createPost = async (req, res) => {
+    req.body.startTime = convertDateTime(moment(req.body.startDate), req.body.startTime);
+    req.body.endTime = convertDateTime(moment(req.body.endDate), req.body.endTime);
+
+    const serviceRecord = await Service.findOne({
+        deleted: false,
+        _id: req.body.service_id
+    }).select("title coefficient_id basicPrice ");
+    const costFactorType = await CostFactorType.findOne(
+        { coefficientList: { $elemMatch: { _id: serviceRecord.coefficient_id } } },
+        { "coefficientList.$": 1, _id: 0 }
+    );
+    const TotalCost = calculateRequestCost(req.body.startTime, req.body.endTime, serviceRecord.basicPrice, req.body.coefficient_other);
+ 
+    req.body.totalCost = TotalCost;
+
+    let service = {
+        title: serviceRecord.title, 
+        coefficient: costFactorType.coefficientList[0].value,  
+        cost: serviceRecord.basicPrice 
+    };
+    req.body.service = service;
+
     if (req.body.requestType == "shortTerm") {
         req.body.endDate = req.body.startDate;
     }
@@ -171,7 +186,8 @@ module.exports.createPost = async (req, res) => {
     let customerInfo = {
         fullName: req.body.fullName,
         phone: req.body.phone,
-        address: req.body.address
+        address: req.body.address,
+        usedPoint: Math.floor(TotalCost * 1 / 100)
     }
     req.body.customerInfo = customerInfo;
 
@@ -181,38 +197,25 @@ module.exports.createPost = async (req, res) => {
     }
     req.body.location = location;
 
-    const hasExtraFee = await Service.findOne(
-        { _id: req.body.service_id }
-    );
-    if (hasExtraFee.extraFee == "yes") {
-        req.body.status = "pending";
-    }
-
-    const startDate = moment(req.body.startDate);
-    const startTime = moment(startDate);
-    const startTimeTemp = parseInt(req.body.startTime);
-    // Create time
-    startTime.hour(Math.floor(startTimeTemp / 60))
-            .minute(startTimeTemp % 60)
-            .second(0)
-            .millisecond(0);
-    // Add 7 hours (VN is UTC +7)
-    startTime.add(7, 'hours');
-    // Convert to Date 
-    req.body.startTime = startTime.toDate();
     
-    const endDate = moment(req.body.endDate);
-    const endTime = moment(endDate);
-    const endTimeTemp = parseInt(req.body.endTime);
-    // Create time
-    endTime.hour(Math.floor(endTimeTemp / 60))
-            .minute(endTimeTemp % 60)
-            .second(0)
-            .millisecond(0);
-    // Add 7 hours (VN is UTC +7)
-    endTime.add(7, 'hours');
-    // Convert to Date 
-    req.body.endTime = endTime.toDate();
+    const scheduleIds = [];
+    let curr = moment(req.body.startTime);
+    const end = moment(req.body.endTime);
+    while (curr <= end) {
+        let objectDate = {
+            workingDate: curr.toDate(),
+            helper_id: "null",
+            status: "notDone",
+            helper_cost: 0
+        };
+
+        const requestDetail = new RequestDetail(objectDate);
+        await requestDetail.save();
+        
+        curr = curr.add(1, 'days');
+        scheduleIds.push({ schedule_id: requestDetail.id});
+    }
+    req.body.scheduleIds = scheduleIds;
 
     const request = new Request(req.body);
     await request.save();
@@ -287,6 +290,28 @@ module.exports.edit = async (req, res) => {
 
 // [PATCH] /admin/requests/edit/:id
 module.exports.editPatch = async (req, res) => {
+    req.body.startTime = convertDateTime(moment(req.body.startDate), req.body.startTime);
+    req.body.endTime = convertDateTime(moment(req.body.endDate), req.body.endTime);
+
+    const serviceRecord = await Service.findOne({
+        deleted: false,
+        _id: req.body.service_id
+    }).select("title coefficient_id basicPrice ");
+    const costFactorType = await CostFactorType.findOne(
+        { coefficientList: { $elemMatch: { _id: serviceRecord.coefficient_id } } },
+        { "coefficientList.$": 1, _id: 0 }
+    );
+    const TotalCost = calculateRequestCost(req.body.startTime, req.body.endTime, serviceRecord.basicPrice, req.body.coefficient_other);
+ 
+    req.body.totalCost = TotalCost;
+
+    let service = {
+        title: serviceRecord.title, 
+        coefficient: costFactorType.coefficientList[0].value,  
+        cost: serviceRecord.basicPrice 
+    };
+    req.body.service = service;
+
     if (req.body.requestType == "shortTerm") {
         req.body.endDate = req.body.startDate;
     }
@@ -294,7 +319,8 @@ module.exports.editPatch = async (req, res) => {
     let customerInfo = {
         fullName: req.body.fullName,
         phone: req.body.phone,
-        address: req.body.address
+        address: req.body.address,
+        usedPoint: Math.floor(TotalCost * 1 / 100)
     }
     req.body.customerInfo = customerInfo;
 
@@ -304,38 +330,25 @@ module.exports.editPatch = async (req, res) => {
     }
     req.body.location = location;
 
-    const hasExtraFee = await Service.findOne(
-        { _id: req.body.service_id }
-    );
-    if (hasExtraFee.extraFee == "yes") {
-        req.body.status = "pending";
-    }
-
-    const startDate = moment(req.body.startDate);
-    const startTime = moment(startDate);
-    const startTimeTemp = parseInt(req.body.startTime);
-    // Create time
-    startTime.hour(Math.floor(startTimeTemp / 60))
-            .minute(startTimeTemp % 60)
-            .second(0)
-            .millisecond(0);
-    // Add 7 hours (VN is UTC +7)
-    startTime.add(7, 'hours');
-    // Convert to Date 
-    req.body.startTime = startTime.toDate();
     
-    const endDate = moment(req.body.endDate);
-    const endTime = moment(endDate);
-    const endTimeTemp = parseInt(req.body.endTime);
-    // Create time
-    endTime.hour(Math.floor(endTimeTemp / 60))
-            .minute(endTimeTemp % 60)
-            .second(0)
-            .millisecond(0);
-    // Add 7 hours (VN is UTC +7)
-    endTime.add(7, 'hours');
-    // Convert to Date 
-    req.body.endTime = endTime.toDate();
+    const scheduleIds = [];
+    let curr = moment(req.body.startTime);
+    const end = moment(req.body.endTime);
+    while (curr <= end) {
+        let objectDate = {
+            workingDate: curr.toDate(),
+            helper_id: "null",
+            status: "notDone",
+            helper_cost: 0
+        };
+
+        const requestDetail = new RequestDetail(objectDate);
+        await requestDetail.save();
+        
+        curr = curr.add(1, 'days');
+        scheduleIds.push({ schedule_id: requestDetail.id});
+    }
+    req.body.scheduleIds = scheduleIds;
 
     await Request.updateOne(
         { _id: req.params.id },
@@ -357,9 +370,6 @@ module.exports.detail = async (req, res) => {
     const service = await Service.findOne({ _id: request.service_id }).select("title basicPrice extraFee overTimePrice_Customer");
     const helpers = await Helpers.find({ deleted: false });
 
-    // Calculate request cost
-    const objectRequestCost = calculateRequestCost(request, service);
-    // End Calculate request cost
 
     res.render("pages/requests/detail", {
         pageTitle: "Chi tiết thông tin đơn hàng",
@@ -369,6 +379,32 @@ module.exports.detail = async (req, res) => {
         objectRequestCost: objectRequestCost
     })
 }
+
+// module.exports.detail = async (req, res) => {
+//     try {
+//         let find = {
+//             _id: req.params.id,
+//             deleted: false
+//         };
+    
+//         const request = await Request.findOne(find);
+//         const service = await Service.findOne({ _id: request.service_id }).select("title basicPrice extraFee overTimePrice_Customer");
+//         const helpers = await Helpers.find({ deleted: false });
+    
+//         // Calculate request cost
+//         const objectRequestCost = calculateRequestCost(request, service);
+//         // End Calculate request cost
+    
+//         res.json({
+//             request: request,
+//             service: service,
+//             helpers: helpers,
+//             objectRequestCost: objectRequestCost
+//         })
+//     } catch (error) {
+//         res.status(500).json({ error: 'An error occurred while fetching requests' });
+//     }
+// }
 
 // [GET] /admin/requests/updateRequestCost/:id
 module.exports.updateRequestCost = async (req, res) => {

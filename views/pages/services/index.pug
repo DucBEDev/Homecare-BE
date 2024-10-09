@@ -62,9 +62,6 @@ block main
                             th STT
                             th Dịch vụ
                             th Giá cơ bản (VNĐ/Giờ)
-                            th Phụ phí
-                            th Phí Ngoài Giờ (KH)
-                            th Phí Ngoài Giờ (NGV)
                             th Trạng thái
                             th Hoạt động
                     tbody
@@ -75,12 +72,6 @@ block main
                                 td #{index + 1}
                                 td #{item.title}    
                                 td #{item.basicPrice}
-                                if (item.extraFee == "yes") 
-                                    td Có
-                                else 
-                                    td Không
-                                td #{item.overTimePrice_Helper}
-                                td #{item.overTimePrice_Customer}
                                 td 
                                     if (item.status == "active")
                                         a(

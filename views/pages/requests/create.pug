@@ -54,6 +54,22 @@ block main
                         basicPrice=item.basicPrice 
                         extraFee=item.extraFee
                     ) #{item.title}
+        div(class="form-group")
+            label(for="coefficient") Hệ số dịch vụ *
+            select(class="form-control" name="coefficient")
+                option(disabled selected) -- Chọn hệ số dịch vụ --
+                each record in coefficientLists
+                    if (record.applyTo == "service")
+                        each item in record.coefficientList
+                            option(value=item.value) #{item.title}
+        div(class="form-group")
+            label(for="coefficient_other") Hệ số khác *
+            select(class="form-control" name="coefficient_other")
+                option(disabled selected) -- Chọn hệ số khác --
+                each record in coefficientLists
+                    if (record.applyTo == "other")
+                        each item in record.coefficientList
+                            option(value=item.value) #{item.title}
         div(class="form-group form-check form-check-inline")
             input(
                 type="radio"
