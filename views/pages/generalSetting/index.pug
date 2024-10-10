@@ -1,0 +1,31 @@
+extends ../../layouts/default.pug
+
+block main 
+    h1(class="mb-4") Cài đặt chung
+
+    form(
+        action=`${prefixAdmin}/generalSettings/update`
+        method="POST"
+    )
+        div(class="form-group")
+            label(for="baseSalary") Chi phí cơ bản của người giúp việc (VNĐ/giờ)
+            input(
+                type="text"
+                class="form-control"
+                id="baseSalary"
+                name="baseSalary"
+            )
+        div(class="form-group")
+            label(for="openHour") Giờ mở cửa
+            select(name="openHour" class="form-control" chooseStartTimeSelect)
+        div(class="form-group")
+            label(for="closeHour") Giờ đóng cửa
+            select(name="closeHour" class="form-control" chooseEndTimeSelect)
+        div(Class="form-group")
+            button(
+                type="submit"
+                class="btn btn-primary"
+            ) Cập nhật
+    
+    script(src="/js/generalSetting.js")
+        

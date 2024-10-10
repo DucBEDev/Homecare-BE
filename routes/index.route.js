@@ -11,6 +11,7 @@ const serviceRoutes = require("./service.route");
 const requestRoutes = require("./request.route");
 const costFactorTypeRoutes = require("./costFactorType.route");
 const customerRoutes = require("./customer.route");
+const generalSettingRoutes = require("./generalSetting.route");
 
 module.exports = (app) => {
     const PATH_ADMIN = systemConfig.prefixAdmin;
@@ -24,4 +25,5 @@ module.exports = (app) => {
     app.use(PATH_ADMIN + '/requests', requestRoutes);
     app.use(PATH_ADMIN + '/costFactors', costFactorTypeRoutes);
     app.use(PATH_ADMIN + '/customers', customerRoutes);
+    app.use(PATH_ADMIN + '/generalSettings', generalSettingRoutes);
 }

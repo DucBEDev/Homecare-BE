@@ -123,11 +123,8 @@ module.exports.index = async (req, res) => {
             } 
             // End Auto update status in real-time
         });
-        console.log(records)
 
-        res.json({
-            updatedRecords
-        });
+        res.json({records});
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
@@ -146,7 +143,7 @@ module.exports.create = async (req, res) => {
             applyTo: { $in: ["service", "other"] } 
         }
     ).select("coefficientList applyTo");
-
+    
     res.render('pages/requests/create', {
         pageTitle: "Thêm đơn hàng",
         locations: locations,
