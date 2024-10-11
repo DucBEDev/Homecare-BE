@@ -14,13 +14,14 @@ block main
                 class="form-control"
                 id="baseSalary"
                 name="baseSalary"
+                value=generalSetting.baseSalary
             )
         div(class="form-group")
             label(for="openHour") Giờ mở cửa
-            select(name="openHour" class="form-control" chooseStartTimeSelect)
+            select(name="openHour" class="form-control" data=generalSetting.openHour chooseStartTimeSelect)
         div(class="form-group")
             label(for="closeHour") Giờ đóng cửa
-            select(name="closeHour" class="form-control" chooseEndTimeSelect)
+            select(name="closeHour" class="form-control" data=generalSetting.closeHour chooseEndTimeSelect)
         div(Class="form-group")
             button(
                 type="submit"
