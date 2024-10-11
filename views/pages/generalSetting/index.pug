@@ -18,10 +18,16 @@ block main
             )
         div(class="form-group")
             label(for="openHour") Giờ mở cửa
-            select(name="openHour" class="form-control" data=generalSetting.openHour chooseStartTimeSelect)
+            select(name="openHour" class="form-control" data=generalSetting.openHour chooseTimeSelect)
         div(class="form-group")
             label(for="closeHour") Giờ đóng cửa
-            select(name="closeHour" class="form-control" data=generalSetting.closeHour chooseEndTimeSelect)
+            select(name="closeHour" class="form-control" data=generalSetting.closeHour chooseTimeSelect)
+        div(class="form-group")
+            label(for="officeStartTime") Giờ bắt đầu hành chính
+            select(name="officeStartTime" class="form-control" data=generalSetting.officeStartTime chooseTimeSelect)
+        div(class="form-group")
+            label(for="officeEndTime") Giờ kết thúc hành chính
+            select(name="officeEndTime" class="form-control" data=generalSetting.officeEndTime chooseTimeSelect)
         div(Class="form-group")
             button(
                 type="submit"
