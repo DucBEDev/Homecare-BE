@@ -10,8 +10,6 @@ router.delete('/delete/:id', controller.deleteItem);
 router.get('/edit/:id', controller.edit);
 router.patch('/edit/:id', controller.editPatch);
 router.get('/detail/:id', controller.detail);
-router.get('/updateRequestCost/:id', controller.updateRequestCost);
-router.patch('/updateRequestCost/:id', controller.updateRequestCostPatch);
 router.patch('/updateHelperToRequest/:id', controller.updateHelperToRequest);
 router.get('/updateRequestDone/:id', controller.updateRequestDone);
 

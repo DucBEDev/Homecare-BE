@@ -32,23 +32,14 @@ block main
                                 | Ngày làm việc: Từ <b>#{moment(request.startTime).format("DD/MM/YYYY")}</b> Đến <b>#{moment(request.endTime).format("DD/MM/YYYY")}</b>
                         .col-6 
                             | Thời gian làm việc: Từ <b>#{moment.utc(request.startTime).format("HH:mm")}</b> Đến <b>#{moment.utc(request.endTime).format("HH:mm")}</b>
-                        .col-6 
-                            | Dịch vụ: <b>#{service.title}</b>
+                        //- .col-6 
+                        //-     | Dịch vụ: <b>#{service.title}</b>
                         .col-6 
                             | Trạng thái đơn hàng: 
                             if (request.status == "notDone")
                                 | <b>Chưa thực hiện</b>
                             else if (request.status == "done")
                                 | <b>Hoàn thành đơn hàng</b>
-                        .col-6 
-                            | Chi phí cơ bản: <b>#{objectRequestCost.baseCost} VNĐ</b>
-                        if (objectRequestCost.negotiationCosts != 0)
-                            .col-6 
-                                | Chi phí thỏa thuận: <b>#{objectRequestCost.negotiationCosts} VNĐ</b>
-                        .col-6 
-                            | Chi Phí Ngoài Giờ: <b>#{objectRequestCost.OTTotalCost} VNĐ (#{objectRequestCost.OTTotalHour} giờ)</b>
-                        .col-6 
-                            | Tổng Chi Phí: <b>#{objectRequestCost.TotalCost} VNĐ</b>
                         .col-12 
                             | Người giúp việc: 
                             div(class="form-group")

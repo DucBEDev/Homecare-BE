@@ -5,11 +5,10 @@ const requestSchema = new mongoose.Schema({
         type: Date,
         default: Date.now()
     },
-    scheduleIds: [
-        {
-            schedule_id: String
-        }
-    ],
+    scheduleIds: {
+        type: Array,
+        default: []
+    },
     startTime: Date,
     endTime: Date,
     comment: {
@@ -26,7 +25,8 @@ const requestSchema = new mongoose.Schema({
     requestType: String,
     service: {
         title: String, // Tên dịch vụ
-        coefficient: Number, // Hệ số dịch vụ,
+        coefficient_service: Number, // Hệ số dịch vụ,
+        coefficient_other: Number, // Hệ số khác (ngoài giờ, cuối tuần, ...),
         cost: Number // Số tiền phải trả cho dịch vụ đó trên 1 giờ
     },
     totalCost: Number,

@@ -3,9 +3,13 @@ const Request = require("../models/request.model");
 const RequestDetail = require("../models/requestDetail.model");
 const Location = require("../models/location.model");
 const Service = require("../models/service.model");
-const Helpers = require("../models/helper.model");
+const Helper = require("../models/helper.model");
 const Customer = require("../models/customer.model");
 const CostFactorType = require("../models/costFactorType.model");
+const GeneralSetting = require("../models/generalSetting.model");
+
+// Global variables
+const generalSetting_id = "generalSetting";
 
 // Config 
 const systemConfig = require("../config/system");
@@ -17,29 +21,39 @@ const formatDateHelper = require("../helpers/formatDate");
 const moment = require("moment");
 
 // Function 
-function calculateRequestCost(startTime, endTime, basicPrice, coefficient_OT) {
+async function calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_helper = 0, basicPrice = 0) {
+    const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime baseSalary");
+
     const daysDiff = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 3600 * 24));
     const hoursDiff = Math.ceil(endTime.getUTCHours() - startTime.getUTCHours());
-    const baseCost = basicPrice * hoursDiff * daysDiff;
-    const eightAM = 8;
-    const sixPM = 18;
-    const OTStartTime = Math.ceil(eightAM - startTime.getUTCHours());
-    const OTEndTime = Math.ceil(sixPM - endTime.getUTCHours());
-    const defaultCoefficient = 1;
+    const officeStartTime = generalSetting.officeStartTime / 60;
+    const officeEndTime = generalSetting.officeEndTime / 60;
+    const OTStartTime = Math.ceil(officeStartTime - startTime.getUTCHours());
+    const OTEndTime = Math.ceil(officeEndTime - endTime.getUTCHours());
     let OTTotalHour = 0;
-
+    
     if (OTStartTime > 0) {
         OTTotalHour += OTStartTime;
     }
     if (OTEndTime < 0) {
         OTTotalHour += Math.abs(OTEndTime);
     }
-
-    const OTTotalCost = Math.floor((coefficient_OT - defaultCoefficient) * basicPrice * OTTotalHour * daysDiff);
-    const TotalCost = baseCost + OTTotalCost; //Tiền khách hàng trả
+    
+    let TotalCost = 0;
+    if (coefficient_helper) {
+        const baseCost = Math.floor(generalSetting.baseSalary * coefficient_helper * (hoursDiff - OTTotalHour) * coefficient_service);
+        const OTTotalCost = Math.floor(generalSetting.baseSalary * coefficient_helper * OTTotalHour * coefficient_OT * coefficient_service);
+        TotalCost = baseCost + OTTotalCost; // Tiền lương của người giúp việc
+    }
+    else {
+        const baseCost = Math.floor(basicPrice * (hoursDiff - OTTotalHour) * daysDiff * coefficient_service);
+        const OTTotalCost = Math.floor(basicPrice * OTTotalHour * daysDiff * coefficient_OT * coefficient_service);
+        TotalCost = baseCost + OTTotalCost; // Tiền khách hàng trả
+    }
 
     return TotalCost;
 }
+
 
 function convertDateTime(queryDate, queryTime) {
     const time = moment(queryDate);
@@ -131,48 +145,68 @@ module.exports.index = async (req, res) => {
 }
 
 // [GET] /admin/requests/create
-module.exports.create = async (req, res) => {
-    const locations = await Location.find({});
-    const services = await Service.find({
-        deleted: false,
-        status: "active"
-    });
-    const records = await CostFactorType.find(
-        { 
-            deleted: false,
-            applyTo: { $in: ["service", "other"] } 
-        }
-    ).select("coefficientList applyTo");
+// module.exports.create = async (req, res) => {
+//     const locations = await Location.find({});
+//     const services = await Service.find({
+//         deleted: false,
+//         status: "active"
+//     });
+//     const records = await CostFactorType.find(
+//         { 
+//             deleted: false,
+//             applyTo: { $in: ["service", "other"] } 
+//         }
+//     ).select("coefficientList applyTo");
     
-    res.render('pages/requests/create', {
-        pageTitle: "Thêm đơn hàng",
-        locations: locations,
-        services: services,
-        coefficientLists: records
-    });
+//     res.render('pages/requests/create', {
+//         pageTitle: "Thêm đơn hàng",
+//         locations: locations,
+//         services: services,
+//         coefficientLists: records
+//     });
+// }
+
+module.exports.create = async (req, res) => {
+    try {
+        const locations = await Location.find({});
+        const services = await Service.find({
+            deleted: false,
+            status: "active"
+        });
+        const coefficientLists = await CostFactorType.find(
+            { 
+                deleted: false,
+                applyTo: { $in: ["service", "other"] } 
+            }
+        ).select("coefficientList applyTo");
+        
+        res.json({
+            locations,
+            services,
+            coefficientLists
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching data' });
+    }
 }
 
 // [POST] /admin/requests/create
 module.exports.createPost = async (req, res) => {
+    const serviceList = req.body.service.split("-");
+    const serviceTitle = serviceList[0];
+    const serviceBasePrice = parseInt(serviceList[1]);
+
     req.body.startTime = convertDateTime(moment(req.body.startDate), req.body.startTime);
     req.body.endTime = convertDateTime(moment(req.body.endDate), req.body.endTime);
 
-    const serviceRecord = await Service.findOne({
-        deleted: false,
-        _id: req.body.service_id
-    }).select("title coefficient_id basicPrice ");
-    const costFactorType = await CostFactorType.findOne(
-        { coefficientList: { $elemMatch: { _id: serviceRecord.coefficient_id } } },
-        { "coefficientList.$": 1, _id: 0 }
-    );
-    const TotalCost = calculateRequestCost(req.body.startTime, req.body.endTime, serviceRecord.basicPrice, req.body.coefficient_other);
- 
+    const TotalCost = await calculateCost(req.body.startTime, req.body.endTime, parseFloat(req.body.coefficient_service), parseFloat(req.body.coefficient_other), serviceBasePrice);
     req.body.totalCost = TotalCost;
 
     let service = {
-        title: serviceRecord.title, 
-        coefficient: costFactorType.coefficientList[0].value,  
-        cost: serviceRecord.basicPrice 
+        title: serviceTitle, 
+        coefficient_service: parseFloat(req.body.coefficient_service),
+        coefficient_other: parseFloat(req.body.coefficient_other),
+        cost: serviceBasePrice 
     };
     req.body.service = service;
 
@@ -210,7 +244,7 @@ module.exports.createPost = async (req, res) => {
         await requestDetail.save();
         
         curr = curr.add(1, 'days');
-        scheduleIds.push({ schedule_id: requestDetail.id});
+        scheduleIds.push(requestDetail.id);
     }
     req.body.scheduleIds = scheduleIds;
 
@@ -259,17 +293,21 @@ module.exports.deleteItem = async (req, res) => {
 
 // [GET] /admin/requests/edit/:id
 module.exports.edit = async (req, res) => {
-    let find = {
+    const request = await Request.findOne({
         _id: req.params.id,
         deleted: false
-    };
-
-    const request = await Request.findOne(find);
+    });
     const locations = await Location.find({});
     const services = await Service.find({
         deleted: false,
         status: "active"
     });
+    const records = await CostFactorType.find(
+        { 
+            deleted: false,
+            applyTo: { $in: ["service", "other"] } 
+        }
+    ).select("coefficientList applyTo");
 
     const requestDate = {
         startDate: formatDateHelper(request.startTime),
@@ -281,31 +319,28 @@ module.exports.edit = async (req, res) => {
         request: request,
         locations: locations,
         services: services,
-        requestDate: requestDate
+        requestDate: requestDate,
+        coefficientLists: records
     })
 }
 
 // [PATCH] /admin/requests/edit/:id
 module.exports.editPatch = async (req, res) => {
+    const serviceList = req.body.service.split("-");
+    const serviceTitle = serviceList[0];
+    const serviceBasePrice = parseInt(serviceList[1]);
+
     req.body.startTime = convertDateTime(moment(req.body.startDate), req.body.startTime);
     req.body.endTime = convertDateTime(moment(req.body.endDate), req.body.endTime);
 
-    const serviceRecord = await Service.findOne({
-        deleted: false,
-        _id: req.body.service_id
-    }).select("title coefficient_id basicPrice ");
-    const costFactorType = await CostFactorType.findOne(
-        { coefficientList: { $elemMatch: { _id: serviceRecord.coefficient_id } } },
-        { "coefficientList.$": 1, _id: 0 }
-    );
-    const TotalCost = calculateRequestCost(req.body.startTime, req.body.endTime, serviceRecord.basicPrice, req.body.coefficient_other);
- 
+    const TotalCost = await calculateCost(req.body.startTime, req.body.endTime, parseFloat(req.body.coefficient_service), parseFloat(req.body.coefficient_other), serviceBasePrice);
     req.body.totalCost = TotalCost;
 
     let service = {
-        title: serviceRecord.title, 
-        coefficient: costFactorType.coefficientList[0].value,  
-        cost: serviceRecord.basicPrice 
+        title: serviceTitle, 
+        coefficient_service: parseFloat(req.body.coefficient_service),
+        coefficient_other: parseFloat(req.body.coefficient_other),
+        cost: serviceBasePrice 
     };
     req.body.service = service;
 
@@ -343,7 +378,7 @@ module.exports.editPatch = async (req, res) => {
         await requestDetail.save();
         
         curr = curr.add(1, 'days');
-        scheduleIds.push({ schedule_id: requestDetail.id});
+        scheduleIds.push(requestDetail.id);
     }
     req.body.scheduleIds = scheduleIds;
 
@@ -357,87 +392,71 @@ module.exports.editPatch = async (req, res) => {
 }
 
 // [GET] /admin/requests/detail/:id
-module.exports.detail = async (req, res) => {
-    let find = {
-        _id: req.params.id,
-        deleted: false
-    };
-
-    const request = await Request.findOne(find);
-    const service = await Service.findOne({ _id: request.service_id }).select("title basicPrice extraFee overTimePrice_Customer");
-    const helpers = await Helpers.find({ deleted: false });
-
-
-    res.render("pages/requests/detail", {
-        pageTitle: "Chi tiết thông tin đơn hàng",
-        request: request,
-        service: service,
-        helpers: helpers,
-        objectRequestCost: objectRequestCost
-    })
-}
-
 // module.exports.detail = async (req, res) => {
-//     try {
-//         let find = {
-//             _id: req.params.id,
-//             deleted: false
-//         };
-    
-//         const request = await Request.findOne(find);
-//         const service = await Service.findOne({ _id: request.service_id }).select("title basicPrice extraFee overTimePrice_Customer");
-//         const helpers = await Helpers.find({ deleted: false });
-    
-//         // Calculate request cost
-//         const objectRequestCost = calculateRequestCost(request, service);
-//         // End Calculate request cost
-    
-//         res.json({
-//             request: request,
-//             service: service,
-//             helpers: helpers,
-//             objectRequestCost: objectRequestCost
-//         })
-//     } catch (error) {
-//         res.status(500).json({ error: 'An error occurred while fetching requests' });
-//     }
+//     let find = {
+//         _id: req.params.id,
+//         deleted: false
+//     };
+
+//     const request = await Request.findOne(find);
+//     const helpers = await Helper.find({ deleted: false });
+
+
+//     res.render("pages/requests/detail", {
+//         pageTitle: "Chi tiết thông tin đơn hàng",
+//         request: request,
+//         helpers: helpers
+//     })
 // }
 
-// [GET] /admin/requests/updateRequestCost/:id
-module.exports.updateRequestCost = async (req, res) => {
-    const requestId = req.params.id;
+module.exports.detail = async (req, res) => {
+    try {
+        let find = {
+            _id: req.params.id,
+            deleted: false
+        };
+    
+        const request = await Request.findOne(find);
+        const helpers = await Helper.find({ deleted: false }).select("fullName");
+        const scheduleRequest = [];
 
-    res.render("pages/requests/updateRequestCost", {
-        pageTitle: "Thỏa thuận đơn hàng",
-        requestId: requestId
-    })
-}
-
-// [PATCH] /admin/requests/updateRequestCost/:id
-module.exports.updateRequestCostPatch = async (req, res) => {
-    const id = req.params.id;
-    const negotiationCosts = req.body.negotiationCosts;
-
-    await Request.updateOne(
-        { _id: id },
-        { 
-            negotiationCosts: negotiationCosts,
-            status: "notDone"
+        for (const id of request.scheduleIds) {
+            const record = await RequestDetail.findOne({ _id: id });
+            const helperName = await Helper.findOne({ _id: record.helper_id }).select("fullName");
+            record.helperName = helperName.fullName;
+            scheduleRequest.push(record);
         }
-    );
-
-    req.flash("success", "Cập nhật chi phí thỏa thuận thành công");
-    res.redirect(`${systemConfig.prefixAdmin}/requests`);
+    
+        res.json({
+            request: request,
+            helpers: helpers,
+            scheduleRequest: scheduleRequest
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
 }
+
 
 // [PATCH] /admin/requests/updateHelperToRequest/:id
 module.exports.updateHelperToRequest = async (req, res) => {
     const id = req.params.id;
+    const helper_id = req.body.helper_id;
     
-    await Request.updateOne(
-        { _id: id },
-        { helper_id: req.body.helper_id }
-    );
+    const request = await Request.findOne({ _id: id }).select("scheduleIds startTime endTime service");
+    const helper_baseFactor = await Helper.findOne({ _id: helper_id }).select("baseFactor");
+
+    for (const scheduleId of request.scheduleIds) {
+        const totalCost = await calculateCost(request.startTime, request.endTime, request.service.coefficient_service, request.service.coefficient_other, helper_baseFactor.baseFactor);
+        const record = await RequestDetail.updateOne(
+            { _id: scheduleId },
+            { 
+                helper_id: helper_id,
+                helper_cost: totalCost,
+                status: "processing"
+            }
+        );
+    }
 
     req.flash("success", "Giao việc thành công");
     res.redirect(`${systemConfig.prefixAdmin}/requests`);

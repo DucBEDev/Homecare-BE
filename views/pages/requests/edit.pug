@@ -50,15 +50,36 @@ block main
             select(name="district" class="form-control" chooseDistrictSelect)
                 option(value=request.location.district) #{request.location.district}
         div(class="form-group")
-            label(for="service_id") Loại dịch vụ *
-            select(name="service_id" class="form-control")
+            label(for="service") Loại dịch vụ *
+            select(name="service" class="form-control")
+                option(disabled selected) -- Chọn dịch vụ --
                 each item in services
                     option(
-                        value=item.id
-                        basicPrice=item.basicPrice 
-                        extraFee=item.extraFee
-                        selected=(request.service_id == item.id) ? true : false
+                        value=`${item.title}-${item.basicPrice}`
+                        selected=(item.title == request.service.title) ? true : false
                     ) #{item.title}
+        div(class="form-group")
+            label(for="coefficient_service") Hệ số dịch vụ *
+            select(class="form-control" name="coefficient_service")
+                option(disabled selected) -- Chọn hệ số dịch vụ --
+                each record in coefficientLists
+                    if (record.applyTo == "service")
+                        each item in record.coefficientList
+                            option(
+                                value=item.value
+                                selected=(item.value == request.service.coefficient_service) ? true : false
+                            ) #{item.title}
+        div(class="form-group")
+            label(for="coefficient_other") Hệ số khác 
+            select(class="form-control" name="coefficient_other")
+                option(value="0" selected) Không
+                each record in coefficientLists
+                    if (record.applyTo == "other")
+                        each item in record.coefficientList
+                            option(
+                                value=item.value
+                                selected=(item.value == request.service.coefficient_other) ? true : false
+                            ) #{item.title}
         div(class="form-group form-check form-check-inline")
             input(
                 type="radio"
