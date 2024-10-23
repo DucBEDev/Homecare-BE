@@ -6,12 +6,17 @@ const express = require('express');
 const app = express();
 const port = process.env.PORT;
 
+// Parse JSON bodies (as sent by API clients)
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
 // Config CORS to connect FE and BE
 const cors = require('cors');
 app.use(cors({
-    origin: 'http://localhost:3000', // địa chỉ của frontend
+    origin: 'http://localhost:3000',
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', "application/json", "text/plain"]
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }));
 
 // Connect to mongoose DB
@@ -26,18 +31,12 @@ app.use(methodOverride("_method"));
 const moment = require("moment");
 app.locals.moment = moment;
 
-// Connect to parse the body when data is sent onto server by using body-parser library
-const bodyParser = require("body-parser");
-app.use(bodyParser.urlencoded({ extended: false} ));
-
-// Connect to Express Flash library to show notification when changing things
-const flash = require("express-flash");
+// Session và Cookie config
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
 
 app.use(cookieParser("keyboard cat"));
 app.use(session({ cookie: { maxAge: 60000}}));
-app.use(flash());
 
 // Connect to routes
 const routeAdmin = require('./routes/index.route')

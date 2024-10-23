@@ -98,7 +98,6 @@ module.exports.index = async (req, res) => {
     }
 }
 
-
 module.exports.create = async (req, res) => {
     try {
         const locations = await Location.find({});
@@ -126,6 +125,7 @@ module.exports.create = async (req, res) => {
 // [POST] /admin/requests/create
 module.exports.createPost = async (req, res) => {
     try {
+        console.log(req.body)
         const serviceList = req.body.service.split("-");
         const serviceTitle = serviceList[0];
         const serviceBasePrice = parseInt(serviceList[1]);
@@ -206,9 +206,8 @@ module.exports.createPost = async (req, res) => {
                 ]
             });
             await createCustomer.save();
-
-            res.json({ success: true });
         }
+        res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
