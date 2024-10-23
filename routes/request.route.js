@@ -10,7 +10,8 @@ router.delete('/delete/:id', controller.deleteItem);
 router.get('/edit/:id', controller.edit);
 router.patch('/edit/:id', controller.editPatch);
 router.get('/detail/:id', controller.detail);
-router.patch('/updateHelperToRequest/:id', controller.updateHelperToRequest);
-router.get('/updateRequestDone/:id', controller.updateRequestDone);
+router.patch('/updateHelperToRequestDetails/:requestId', controller.updateHelperToRequestDetails);
+router.get('/updateRequestDone/:requestId', controller.updateRequestDone);
+router.patch('/updateRequestDone/:requestId', controller.updateRequestDonePatch);
 
 module.exports = router;

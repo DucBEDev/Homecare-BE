@@ -1,118 +1,137 @@
 // Models
 const Role = require("../models/role.model");
 
-// Config
-const systemConfig = require("../config/system");
 
 // [GET] /admin/roles
 module.exports.index = async (req, res) => {
-    let find = {
-        deleted: false
-    };
+    try {
+        let find = {
+            deleted: false
+        };
+    
+        const records = await Role.find(find);
 
-    const records = await Role.find(find);
-
-    res.render('pages/roles/index', {
-        pageTitle: "Nhóm quyền",
-        records: records
-    });
-}
-
-// [GET] /admin/roles/create
-module.exports.create = async (req, res) => {
-    res.render('pages/roles/create', {
-        pageTitle: "Tạo nhóm quyền"
-    });
+        res.json({
+            success: true,
+            records: records
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [POST] /admin/roles/create
 module.exports.createPost = async (req, res) => {
-    const newRole = new Role(req.body);
-    await newRole.save();
+    try {
+        const newRole = new Role(req.body);
+        await newRole.save();
 
-    req.flash('success', 'Thêm nhóm quyền thành công!');
-    res.redirect(`${systemConfig.prefixAdmin}/roles`);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [GET] /admin/roles/detail/:id
 module.exports.detail = async (req, res) => {
-    const record = await Role.findOne(
-        { 
-            _id: req.params.id,
-            deleted: false
-        }
-    );
+    try {
+        const record = await Role.findOne(
+            { 
+                _id: req.params.id,
+                deleted: false
+            }
+        );
 
-    res.render('pages/roles/detail', {
-        pageTitle: "Chi tiết nhóm quyền",
-        record: record
-    });
+        res.json({
+            success: true,
+            record: record
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [GET] /admin/roles/edit/:id
 module.exports.edit = async (req, res) => {
-    const record = await Role.findOne(
-        { 
-            _id: req.params.id,
-            deleted: false
-        }
-    );
+    try {
+        const record = await Role.findOne(
+            { 
+                _id: req.params.id,
+                deleted: false
+            }
+        );
 
-    res.render('pages/roles/edit', {
-        pageTitle: "Sửa nhóm quyền",
-        record: record
-    });
+        res.json({
+            success: true,
+            record: record
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [PATCH] /admin/roles/edit/:id
 module.exports.editPatch = async (req, res) => {
-    await Role.updateOne(
-        { _id: req.params.id },
-        req.body
-    );
+    try {
+        await Role.updateOne(
+            { _id: req.params.id },
+            req.body
+        );
 
-    req.flash("success", "Cập nhật thành công!");
-    res.redirect(`${systemConfig.prefixAdmin}/roles`);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [DELETE] /admin/roles/delete/:id
 module.exports.deleteItem = async (req, res) => {
-    await Role.updateOne(
-        { _id: req.params.id },
-        { deleted: true }
-    );
+    try {
+        await Role.updateOne(
+            { _id: req.params.id },
+            { deleted: true }
+        );
 
-    req.flash("success", "Xóa thành công!");
-    res.redirect(`${systemConfig.prefixAdmin}/roles`);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [GET] /admin/roles/permissions
 module.exports.permissions = async (req, res) => {
-    let find = {
-        deleted: false
-    };
-    const records = await Role.find(find);
+    try {
+        let find = {
+            deleted: false
+        };
+        const records = await Role.find(find);
 
-    res.render('pages/roles/permissions', {
-        pageTitle: "Phân quyền",
-        records: records
-    });
+        res.json({
+            success: true,
+            records: records
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [PATCH] /admin/roles/permissions
 module.exports.permissionsPatch = async (req, res) => {
-    const permissions = JSON.parse(req.body.permissions);
+    try {
+        const permissions = JSON.parse(req.body.permissions);
 
-    for (const item of permissions) {
-        const id = item.id;
-        const permissions = item.permissions;
+        for (const item of permissions) {
+            const id = item.id;
+            const permissions = item.permissions;
 
-        await Role.updateOne(
-            { _id: id },
-            { permissions: permissions }
-        );
+            await Role.updateOne(
+                { _id: id },
+                { permissions: permissions }
+            );
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
     }
-
-    req.flash("success", "Cập nhật phân quyền thành công!");
-    res.redirect("back");
 }

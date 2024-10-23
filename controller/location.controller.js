@@ -7,32 +7,39 @@ const systemConfig = require("../config/system");
 
 // [GET] /admins/locations
 module.exports.index = async (req, res) => {
-    const locations = await Location.find();
-
-    res.render("pages/locations/index", {
-        pageTitle: "Danh sách địa điểm",
-        locations: locations
-    })
+    try {
+        const locations = await Location.find();
+        res.json({
+            success: true,
+            data: locations
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
 }
 
-// [GET] /admins/locations/fetch
-module.exports.fetchData = async (req, res) => {
-    const locations = await Location.find({ province: req.query.province });
+// [GET] /admins/locations/getLocationsByProvince
+module.exports.getLocationsByProvince = async (req, res) => {
+    try {
+        const locations = await Location.find({ province: req.query.province });
 
-    res.json(locations);
-}
-
-// [GET] /admin/locations/createProvince
-module.exports.createProvince = async (req, res) => {
-    res.render("pages/locations/createProvince", {
-        pageTitle: "Thêm khu vực"
-    })
+        res.json({
+            success: true,
+            data: locations
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
 }
 
 // [POST] /admin/locations/createProvince
 module.exports.createProvincePost = async (req, res) => {
-    const location = new Location(req.body);
-    location.save();
+    try {
+        const location = new Location(req.body);
+        location.save();
+    } catch (error) {
+        
+    }
 
     res.redirect("back");
 }

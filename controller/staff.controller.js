@@ -4,318 +4,312 @@ const Role = require("../models/role.model");
 
 // Config
 const md5 = require('md5');
-const systemConfig = require("../config/system");
-
-// Helpers
-const filterStatusHelper = require("../helpers/filterStatus");
-const searchHelper = require("../helpers/search");
-const paginationHelper = require("../helpers/pagination");
-const formatDateHelper = require("../helpers/formatDate");
 
 
 // [GET] /admin/staffs
 module.exports.index = async (req, res) => {
-    // FIlter status
-    const filterStatus = filterStatusHelper(req.query);
-    let find = {
-        deleted: false,
-    };
-    if (req.query.status) {
-        find.status = req.query.status;
-    }
-
-    // Search
-    const objectSearch = searchHelper(req.query);
-    if (objectSearch.regex) {
-        find.fullName = objectSearch.regex
-    }
-
-    // Pagination
-    const countStaffs = await Staff.countDocuments(find);
-    let objectPagination = paginationHelper(
-        {
-            currentPage: 1, 
-            limitItems: 5
-        },
-        req.query,
-        countStaffs
-    );
-
-    // Sort
-    let sort = {};
-    if (req.query.sortKey && req.query.sortValue) {
-        sort[req.query.sortKey] = req.query.sortValue;
-    }
-
-    const records = await Staff
-                            .find(find)
-                            .sort(sort)
-                            .select("-password")
-                            .limit(objectPagination.limitItems)
-                            .skip(objectPagination.skip);
+    try {
+        let find = { deleted: false };
     
-    for (const record of records) {
-        const role = await Role.findOne({ _id: record.role_id });
-        record.role = role.title;
-    }
+        const records = await Staff.find(find);
+        
+        for (const record of records) {
+            const role = await Role.findOne({ _id: record.role_id });
+            record.role = role.title;
+        }
 
-    res.render('pages/staffs/index', {
-        pageTitle: "Quản lý nhân viên",
-        staffs: records,
-        filterStatus: filterStatus,
-        keyword: objectSearch.keyword,
-        pagination: objectPagination
-    });
+        res.json({
+            success: true,
+            staffs: records
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [GET] /admin/staffs/create
 module.exports.create = async (req, res) => {
-    const roles = await Role.find({
-        deleted: false
-    });
+    try {
+        const roles = await Role.find({
+            deleted: false
+        });
 
-    res.render('pages/staffs/create', {
-        pageTitle: "Thêm mới nhân viên",
-        roles: roles
-    });
+        res.json({
+            success: true,
+            roles: roles
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [POST] /admin/staffs/create
 module.exports.createPost = async (req, res) => {
-    const emailExist = await Staff.findOne({
-        email: req.body.email,
-        deleted: false
-    });
-    const phoneExist = await Staff.findOne({
-        phone: req.body.phone,
-        deleted: false
-    });
-
-    if (emailExist) {
-        req.flash('error', 'Email đã tồn tại');
-        res.redirect("back");
-    }
-    else if (phoneExist) {
-        req.flash('error', 'Số điện thoại đã tồn tại');
-        res.redirect("back");
-    }
-    else {
+    try {
+        const emailExist = await Staff.findOne({
+            email: req.body.email,
+            deleted: false
+        });
+        const phoneExist = await Staff.findOne({
+            phone: req.body.phone,
+            deleted: false
+        });
+    
+        if (emailExist) {
+            res.json({
+                success: false,
+                msg: 'Email đã tồn tại'
+            })
+            return;
+        }
+        if (phoneExist) {
+            res.json({
+                success: false,
+                msg: 'Số điện thoại đã tồn tại'
+            })
+            return;
+        }
         req.body.password = md5(req.body.password);
 
         const record = new Staff(req.body);
         await record.save();
 
-        req.flash('success', 'Khởi tạo nhân viên thành công');
-        res.redirect(`${systemConfig.prefixAdmin}/staffs`);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
     }
 }
 
 // [PATCH] /admin/staffs/change-multi
 module.exports.changeMulti = async (req, res) => {
-    const type = req.body.type;
-    const ids = req.body.ids.split(", ");
-    
-    switch (type) {
-        case "active":
-            await Staff.updateMany(
-                { _id: { $in: ids } },
-                { status: 'active' }
-            );
-            req.flash("success", `Cập nhật trạng thái cho ${ids.length} nhân viên thành công!`);
-            break;
-        case "inactive":
-            await Staff.updateMany(
-                { _id: { $in: ids } },
-                { status: 'inactive' }
-            );
-            req.flash("success", `Cập nhật trạng thái cho ${ids.length} nhân viên thành công!`);
-            break;
-        case "delete-all":
-            await Staff.updateMany(
-                { _id: { $in: ids } },
-                { deleted: true }
-            );
-            req.flash("success", `Xóa ${ids.length} nhân viên thành công!`);
-            break;
-        default:
-            break;
-    }
+    try {
+        const type = req.body.type;
+        const ids = req.body.ids.split(", ");
 
-    res.redirect("back");
+        switch (type) {
+            case "active":
+                await Helper.updateMany(
+                    { _id: { $in: ids } },
+                    { status: "active"}
+                );
+                res.json({ success: true })
+                break;
+            case "inactive":
+                await Helper.updateMany(
+                    { _id: { $in: ids } },
+                    { status: "inactive"}
+                );
+                res.json({ success: true })
+                break;
+            case "delete-all":
+                await Helper.updateMany(
+                    { _id: { $in: ids } },
+                    { deleted: true }
+                );
+                res.json({ success: true })
+                break;
+            default:
+                break;
+    }
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
 }
 
 // [PATCH] /admin/staffs/change-status/:status/:id
 module.exports.changeStatus = async (req, res) => {
-    const status = req.params.status;
-    const id = req.params.id;
+    try {
+        const status = req.params.status;
+        const id = req.params.id;
 
-    await Staff.updateOne(
-        { _id: id },
-        { status: status }
-    )
+        await Staff.updateOne(
+            { _id: id },
+            { status: status }
+        )
 
-    req.flash("success", "Cập nhật thành công");
-    res.redirect("back");
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [DELETE] /admin/staffs/delete/:id
 module.exports.deleteItem = async (req, res) => {
-    const id = req.params.id;
+    try {
+        const id = req.params.id;
 
-    await Staff.updateOne(
-        { _id: id },
-        { deleted: true }
-    )
+        await Staff.updateOne(
+            { _id: id },
+            { deleted: true }
+        )
 
-    req.flash("success", "Xóa thành công");
-    res.redirect("back");
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [GET] /admin/staffs/edit/:id
 module.exports.edit = async (req, res) => {
-    let find = {
-        _id: req.params.id,
-        deleted: false
-    };
+    try {
+        let find = {
+            _id: req.params.id,
+            deleted: false
+        };
+    
+        const staff = await Staff.findOne(find).select("-password");
+    
+        const roles = await Role.find({
+            deleted: false
+        });
 
-    const staff = await Staff.findOne(find).select("-password");
-    const newBirthDate = formatDateHelper(staff.birthDate);
-
-    const roles = await Role.find({
-        deleted: false
-    });
-
-    res.render("pages/staffs/edit", {
-        pageTitle: "Chỉnh sửa thông tin nhân viên",
-        staff: staff,
-        newBirthDate: newBirthDate,
-        roles: roles
-    })
+        res.json({
+            success: true,
+            staff: staff,
+            roles: roles
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [PATCH] /admin/staffs/edit/:id
 module.exports.editPatch = async (req, res) => {
-    const staffIdExist = await Staff.findOne({
-        _id: { $ne: req.params.id },
-        email: req.body.staff_id,
-        deleted: false
-    });
-    if (staffIdExist) {
-        req.flash("error", "CMND đã tồn tại");
-        res.redirect("back");
-        return;
-    }
+    try {
+        const staffIdExist = await Staff.findOne({
+            _id: { $ne: req.params.id },
+            email: req.body.staff_id,
+            deleted: false
+        });
+        if (staffIdExist) {
+            res.json({
+                success: false,
+                msg: 'CMND đã tồn tại'
+            })
+            return;
+        }
+    
+        const phoneExist = await Staff.findOne({
+            _id: { $ne: req.params.id },
+            email: req.body.phone,
+            deleted: false
+        });
+        if (phoneExist) {
+            res.json({
+                success: false,
+                msg: 'Số điện thoại đã tồn tại'
+            })
+            return;
+        }
+    
+        const emailExist = await Staff.findOne({
+            _id: { $ne: req.params.id },
+            email: req.body.email,
+            deleted: false
+        });
+        if (emailExist) {
+            res.json({
+                success: false,
+                msg: 'Email đã tồn tại'
+            })
+            return;
+        }
+    
+        if (req.body.password) {
+            req.body.password = md5(req.body.password);
+        }
+        else {
+            delete req.body.password;
+        }
+    
+        await Staff.updateOne({ _id: req.params.id }, req.body);
 
-    const phoneExist = await Staff.findOne({
-        _id: { $ne: req.params.id },
-        email: req.body.phone,
-        deleted: false
-    });
-    if (phoneExist) {
-        req.flash("error", "Số điện thoại đã tồn tại");
-        res.redirect("back");
-        return;
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
     }
-
-    const emailExist = await Staff.findOne({
-        _id: { $ne: req.params.id },
-        email: req.body.email,
-        deleted: false
-    });
-    if (emailExist) {
-        req.flash("error", "Email đã tồn tại");
-        res.redirect("back");
-        return;
-    }
-
-    if (req.body.password) {
-        req.body.password = md5(req.body.password);
-    }
-    else {
-        delete req.body.password;
-    }
-
-    await Staff.updateOne({ _id: req.params.id }, req.body);
-    req.flash("success", "Cập nhật thông tin nhân viên thành công");
-    res.redirect(`${systemConfig.prefixAdmin}/staffs`);
 }
 
 // [GET] /admin/staffs/detail/:id
 module.exports.detail = async (req, res) => {
-    let find = {
-        _id: req.params.id,
-        deleted: false
-    };
+    try {
+        let find = {
+            _id: req.params.id,
+            deleted: false
+        };
+    
+        const staff = await Staff.findOne(find).select("-password");
+    
+        staff.role = await Role.findOne({
+            _id: staff.role_id,
+            deleted: false
+        });
 
-    const staff = await Staff.findOne(find).select("-password");
-
-    staff.role = await Role.findOne({
-        _id: staff.role_id,
-        deleted: false
-    });
-
-    res.render("pages/staffs/detail", {
-        pageTitle: "Chi tiết thông tin nhân viên",
-        staff: staff
-    })
+        res.json({
+            success: true,
+            staff: staff
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+    }
 }
 
 // [GET] /admin/staffs/setOffDate/:id
-module.exports.setOffDate = async (req, res) => {
-    const staff = await Staff.findOne({ _id: req.params.id }).select("avatar staff_id fullName birthDate phone birthPlace");
+// module.exports.setOffDate = async (req, res) => {
+//     const staff = await Staff.findOne({ _id: req.params.id }).select("avatar staff_id fullName birthDate phone birthPlace");
     
-    const today = new Date();
-    const todayInMonth = today.getDate() - 1;
-    const numberOfDaysInMonth = new Date(today.getUTCFullYear(), today.getMonth() + 1, 0).getDate();
+//     const today = new Date();
+//     const todayInMonth = today.getDate() - 1;
+//     const numberOfDaysInMonth = new Date(today.getUTCFullYear(), today.getMonth() + 1, 0).getDate();
     
-    // Set today to the first day of the month
-    let currentTime = today.getTime();
-    currentTime -= todayInMonth * 24 * 60 * 60 * 1000;
-    today.setTime(currentTime);
+//     // Set today to the first day of the month
+//     let currentTime = today.getTime();
+//     currentTime -= todayInMonth * 24 * 60 * 60 * 1000;
+//     today.setTime(currentTime);
     
-    // Set today to Sunday before the first day of the month
-    const startDayOfThisMonthInWeek = today.getDay();
-    currentTime -= startDayOfThisMonthInWeek * 24 * 60 * 60 * 1000;
-    today.setTime(currentTime);
+//     // Set today to Sunday before the first day of the month
+//     const startDayOfThisMonthInWeek = today.getDay();
+//     currentTime -= startDayOfThisMonthInWeek * 24 * 60 * 60 * 1000;
+//     today.setTime(currentTime);
 
-    const numberOfDaysInCalendar = numberOfDaysInMonth + startDayOfThisMonthInWeek;
-    const numberOfWeeks = numberOfDaysInCalendar / 7;
+//     const numberOfDaysInCalendar = numberOfDaysInMonth + startDayOfThisMonthInWeek;
+//     const numberOfWeeks = numberOfDaysInCalendar / 7;
 
-    const weekList = [];
+//     const weekList = [];
 
-    for (let i = 0; i < numberOfWeeks; i++) {
-        const week = {
-            name: i + "",
-            dateList: []
-        };
+//     for (let i = 0; i < numberOfWeeks; i++) {
+//         const week = {
+//             name: i + "",
+//             dateList: []
+//         };
 
-        for (let j = 0; j < 7 && (i * 7 + j) < numberOfDaysInCalendar; j++) {
-            today.setTime(currentTime + ((i * 7 + j) * 24 * 60 * 60 * 1000));
+//         for (let j = 0; j < 7 && (i * 7 + j) < numberOfDaysInCalendar; j++) {
+//             today.setTime(currentTime + ((i * 7 + j) * 24 * 60 * 60 * 1000));
             
-            const day = new Date(today);
-            const date = {
-                value: today.getDate(),
-                day: day,
-                classType: "normalDate",
-                icon: ""
-            };
+//             const day = new Date(today);
+//             const date = {
+//                 value: today.getDate(),
+//                 day: day,
+//                 classType: "normalDate",
+//                 icon: ""
+//             };
             
-            week.dateList.push(date);
-        }
+//             week.dateList.push(date);
+//         }
 
-        weekList.push(week);
-    }
+//         weekList.push(week);
+//     }
 
-    for (let i = 0; i < todayInMonth + startDayOfThisMonthInWeek; i++) {
-        const week = (i - (i % 7)) / 7;
-        const day = i % 7;
+//     for (let i = 0; i < todayInMonth + startDayOfThisMonthInWeek; i++) {
+//         const week = (i - (i % 7)) / 7;
+//         const day = i % 7;
 
-        weekList[week].dateList[day].classType = "passedDate";
-    }
+//         weekList[week].dateList[day].classType = "passedDate";
+//     }
 
-    res.render("pages/staffs/setOffDate", {
-        pageTitle: "Cập nhật ngày nghỉ nhân viên",
-        staff: staff,
-        weekList: weekList
-    })
-}
+//     res.render("pages/staffs/setOffDate", {
+//         pageTitle: "Cập nhật ngày nghỉ nhân viên",
+//         staff: staff,
+//         weekList: weekList
+//     })
+// }
