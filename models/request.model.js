@@ -37,7 +37,8 @@ const requestSchema = new mongoose.Schema({
     },
     location: {
         province: String,
-        district: String
+        district: String,
+        ward: String
     },
     deleted: {
         type: Boolean,

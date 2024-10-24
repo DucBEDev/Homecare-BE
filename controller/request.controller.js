@@ -49,21 +49,6 @@ async function calculateCost(startTime, endTime, coefficient_service, coefficien
 }
 
 
-function convertDateTime(queryDate, queryTime) {
-    const time = moment(queryDate);
-    const timeTemp = parseInt(queryTime);
-    // Create time
-    time.hour(Math.floor(timeTemp / 60))
-            .minute(timeTemp % 60)
-            .second(0)
-            .millisecond(0);
-    // Add 7 hours (VN is UTC +7)
-    time.add(7, 'hours');
-    // Convert to Date 
-    return time.toDate();
-} 
-
-
 // [GET] /admin/requests
 module.exports.index = async (req, res) => {
     try {
@@ -98,6 +83,7 @@ module.exports.index = async (req, res) => {
     }
 }
 
+// [GET] /admin/requests/create
 module.exports.create = async (req, res) => {
     try {
         const locations = await Location.find({});
@@ -111,11 +97,37 @@ module.exports.create = async (req, res) => {
                 applyTo: { $in: ["service", "other"] } 
             }
         ).select("coefficientList applyTo");
+
+        const serviceList = [];
+        const coefficientOtherList = [];
+        for (let i = 0; i <  coefficientLists.length; i++) {
+            if (coefficientLists[i].applyTo == "service") {
+                for (let j = 0; j < coefficientLists[i].coefficientList.length; j++) {
+                    for (let k = 0; k < services.length; k++) {
+                        if (services[k].coefficient_id == coefficientLists[i].coefficientList[j].id) {
+                            serviceList.push({
+                                title: services[j].title,
+                                basicPrice: services[j].basicPrice,
+                                coefficient: coefficientLists[i].coefficientList[j].value  
+                            });
+                        }
+                    }
+                }
+            }
+            else {
+                for (let j = 0; j < coefficientLists[i].coefficientList.length; j++) {
+                    coefficientOtherList.push({
+                        title: coefficientLists[i].coefficientList[j].title,
+                        value: coefficientLists[i].coefficientList[j].value
+                    });
+                }
+            }
+        }
         
         res.json({
-            locations,
-            services,
-            coefficientLists
+            locations: locations,
+            serviceList: serviceList,
+            coefficientOtherList: coefficientOtherList
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching data' });
@@ -125,40 +137,37 @@ module.exports.create = async (req, res) => {
 // [POST] /admin/requests/create
 module.exports.createPost = async (req, res) => {
     try {
-        console.log(req.body)
-        const serviceList = req.body.service.split("-");
-        const serviceTitle = serviceList[0];
-        const serviceBasePrice = parseInt(serviceList[1]);
+        const serviceTitle = req.body.serviceTitle;
+        const serviceBasePrice = parseInt(req.body.serviceBasePrice);
+        const coefficient_service = parseFloat(req.body.coefficient_service);
+        const coefficient_other = parseFloat(req.body.coefficient_other);
 
-        req.body.startTime = convertDateTime(moment(req.body.startDate), req.body.startTime);
-        req.body.endTime = convertDateTime(moment(req.body.endDate), req.body.endTime);
+        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
 
-        const TotalCost = await calculateCost(req.body.startTime, req.body.endTime, parseFloat(req.body.coefficient_service), parseFloat(req.body.coefficient_other), serviceBasePrice);
+        const TotalCost = await calculateCost(req.body.startTime, req.body.endTime, coefficient_service, coefficient_other, 0, serviceBasePrice);
         req.body.totalCost = TotalCost;
 
         let service = {
             title: serviceTitle, 
-            coefficient_service: parseFloat(req.body.coefficient_service),
-            coefficient_other: parseFloat(req.body.coefficient_other),
+            coefficient_service: coefficient_service,
+            coefficient_other: coefficient_other,
             cost: serviceBasePrice 
         };
         req.body.service = service;
 
-        if (req.body.requestType == "shortTerm") {
-            req.body.endDate = req.body.startDate;
-        }
-
         let customerInfo = {
             fullName: req.body.fullName,
             phone: req.body.phone,
-            address: req.body.address,
+            address: `${req.body.address}, ${req.body.ward}, ${req.body.district}, ${req.body.province}`,
             usedPoint: Math.floor(TotalCost * 1 / 100)
         }
         req.body.customerInfo = customerInfo;
 
         let location = {
             province: req.body.province,
-            district: req.body.district
+            district: req.body.district,
+            ward: req.body.ward
         }
         req.body.location = location;
 
@@ -190,11 +199,13 @@ module.exports.createPost = async (req, res) => {
             const createCustomer = new Customer({
                 fullName: req.body.customerInfo.fullName,
                 phone: req.body.customerInfo.phone,
+                password: "111111",
                 addresses: [
                     {
                         province: req.body.location.province,
                         district: req.body.location.district,
-                        address: req.body.customerInfo.address
+                        ward: req.body.location.ward,
+                        detailAddress: req.body.customerInfo.address
                     }
                 ],
                 signedUp: false,
@@ -263,39 +274,37 @@ module.exports.edit = async (req, res) => {
 // [PATCH] /admin/requests/edit/:id
 module.exports.editPatch = async (req, res) => {
     try {
-        const serviceList = req.body.service.split("-");
-        const serviceTitle = serviceList[0];
-        const serviceBasePrice = parseInt(serviceList[1]);
+        const serviceTitle = req.body.serviceTitle;
+        const serviceBasePrice = parseInt(req.body.serviceBasePrice);
+        const coefficient_service = parseFloat(req.body.coefficient_service);
+        const coefficient_other = parseFloat(req.body.coefficient_other);
 
-        req.body.startTime = convertDateTime(moment(req.body.startDate), req.body.startTime);
-        req.body.endTime = convertDateTime(moment(req.body.endDate), req.body.endTime);
+        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
 
-        const TotalCost = await calculateCost(req.body.startTime, req.body.endTime, parseFloat(req.body.coefficient_service), parseFloat(req.body.coefficient_other), serviceBasePrice);
+        const TotalCost = await calculateCost(req.body.startTime, req.body.endTime, coefficient_service, coefficient_other, serviceBasePrice);
         req.body.totalCost = TotalCost;
 
         let service = {
             title: serviceTitle, 
-            coefficient_service: parseFloat(req.body.coefficient_service),
-            coefficient_other: parseFloat(req.body.coefficient_other),
+            coefficient_service: coefficient_service,
+            coefficient_other: coefficient_other,
             cost: serviceBasePrice 
         };
         req.body.service = service;
 
-        if (req.body.requestType == "shortTerm") {
-            req.body.endDate = req.body.startDate;
-        }
-
         let customerInfo = {
             fullName: req.body.fullName,
             phone: req.body.phone,
-            address: req.body.address,
+            address: `${req.body.address}, ${req.body.ward}, ${req.body.district}, ${req.body.province}`,
             usedPoint: Math.floor(TotalCost * 1 / 100)
         }
         req.body.customerInfo = customerInfo;
 
         let location = {
             province: req.body.province,
-            district: req.body.district
+            district: req.body.district,
+            ward: req.body.ward
         }
         req.body.location = location;
 
