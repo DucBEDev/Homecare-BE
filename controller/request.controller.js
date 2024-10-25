@@ -48,6 +48,10 @@ async function calculateCost(startTime, endTime, coefficient_service, coefficien
     return TotalCost;
 }
 
+function convertMinuteToHour(minute) {
+    const duration = moment.duration(minute, 'minutes');
+    return duration.asHours().toFixed(2).replace('.', ':');
+}
 
 // [GET] /admin/requests
 module.exports.index = async (req, res) => {
@@ -123,11 +127,20 @@ module.exports.create = async (req, res) => {
                 }
             }
         }
-        
+
+        const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime openHour closeHour");
+        const timeList = {
+            officeStartTime: convertMinuteToHour(generalSetting.officeStartTime),
+            officeEndTime: convertMinuteToHour(generalSetting.officeEndTime),
+            openHour: convertMinuteToHour(generalSetting.openHour),
+            closeHour: convertMinuteToHour(generalSetting.closeHour)
+        }
+
         res.json({
             locations: locations,
             serviceList: serviceList,
-            coefficientOtherList: coefficientOtherList
+            coefficientOtherList: coefficientOtherList,
+            timeList: timeList
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching data' });
@@ -137,6 +150,7 @@ module.exports.create = async (req, res) => {
 // [POST] /admin/requests/create
 module.exports.createPost = async (req, res) => {
     try {
+        console.log(req.body)
         const serviceTitle = req.body.serviceTitle;
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
         const coefficient_service = parseFloat(req.body.coefficient_service);
@@ -178,7 +192,7 @@ module.exports.createPost = async (req, res) => {
         while (curr <= end) {
             let objectDate = {
                 workingDate: curr.toDate(),
-                helper_id: "null",
+                helper_id: "chua co",
                 status: "notDone",
                 helper_cost: 0
             };
