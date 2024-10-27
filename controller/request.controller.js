@@ -367,7 +367,10 @@ module.exports.detail = async (req, res) => {
 
         for (const id of request.scheduleIds) {
             const record = await RequestDetail.findOne({ _id: id });
-            const helperName = await Helper.findOne({ _id: record.helper_id }).select("fullName");
+            let helperName = "null";
+            if (record.helper_id != "chua co") {
+               helperName = await Helper.findOne({ _id: record.helper_id }).select("fullName");
+            }
             record.helperName = helperName.fullName;
             scheduleRequest.push(record);
         }
