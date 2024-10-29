@@ -150,7 +150,6 @@ module.exports.create = async (req, res) => {
 // [POST] /admin/requests/create
 module.exports.createPost = async (req, res) => {
     try {
-        console.log(req.body)
         const serviceTitle = req.body.serviceTitle;
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
         const coefficient_service = parseFloat(req.body.coefficient_service);
@@ -192,7 +191,9 @@ module.exports.createPost = async (req, res) => {
         while (curr <= end) {
             let objectDate = {
                 workingDate: curr.toDate(),
-                helper_id: "chua co",
+                startTime: req.body.startTime,
+                endTime: req.body.endTime,
+                helper_id: "notAvailable",
                 status: "notDone",
                 helper_cost: 0
             };
@@ -322,14 +323,22 @@ module.exports.editPatch = async (req, res) => {
         }
         req.body.location = location;
 
-        
+        // Delete old scheduleIds record
+        const scheduleListDetail = await Request.findOne({
+            _id: req.params.id,
+            deleted: false
+        }).select("scheduleIds");
+        await RequestDetail.deleteMany({ _id: { $in: scheduleListDetail.scheduleIds } });
+
         const scheduleIds = [];
         let curr = moment(req.body.startTime);
         const end = moment(req.body.endTime);
         while (curr <= end) {
             let objectDate = {
                 workingDate: curr.toDate(),
-                helper_id: "null",
+                startTime: req.body.startTime,
+                endTime: req.body.endTime,
+                helper_id: "notAvailable",
                 status: "notDone",
                 helper_cost: 0
             };
@@ -368,7 +377,7 @@ module.exports.detail = async (req, res) => {
         for (const id of request.scheduleIds) {
             const record = await RequestDetail.findOne({ _id: id });
             let helperName = "null";
-            if (record.helper_id != "chua co") {
+            if (record.helper_id != "notAvailable") {
                helperName = await Helper.findOne({ _id: record.helper_id }).select("fullName");
             }
             record.helperName = helperName.fullName;

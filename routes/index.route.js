@@ -13,6 +13,7 @@ const costFactorTypeRoutes = require("./costFactorType.route");
 const customerRoutes = require("./customer.route");
 const generalSettingRoutes = require("./generalSetting.route");
 const blogRoutes = require("./blog.route");
+const timeOffRoutes = require("./timeOff.route");
 
 module.exports = (app) => {
     const PATH_ADMIN = systemConfig.prefixAdmin;
@@ -28,4 +29,5 @@ module.exports = (app) => {
     app.use(PATH_ADMIN + '/customers', customerRoutes);
     app.use(PATH_ADMIN + '/generalSettings', generalSettingRoutes);
     app.use(PATH_ADMIN + '/blogs', blogRoutes);
+    app.use(PATH_ADMIN + '/timeOffs', timeOffRoutes);
 }
