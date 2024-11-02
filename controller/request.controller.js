@@ -13,6 +13,7 @@ const generalSetting_id = "generalSetting";
 
 // Libs
 const moment = require("moment");
+const md5 = require('md5');
 
 // Function 
 async function calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_helper = 0, basicPrice = 0) {
@@ -154,7 +155,9 @@ module.exports.createPost = async (req, res) => {
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
-
+        const startTime = req.body.startTime;
+        const endTime = req.body.endTime;
+        
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
 
@@ -184,15 +187,14 @@ module.exports.createPost = async (req, res) => {
         }
         req.body.location = location;
 
-        
         const scheduleIds = [];
         let curr = moment(req.body.startTime);
         const end = moment(req.body.endTime);
         while (curr <= end) {
             let objectDate = {
                 workingDate: curr.toDate(),
-                startTime: req.body.startTime,
-                endTime: req.body.endTime,
+                startTime: startTime,
+                endTime: endTime,
                 helper_id: "notAvailable",
                 status: "notDone",
                 helper_cost: 0
@@ -214,7 +216,7 @@ module.exports.createPost = async (req, res) => {
             const createCustomer = new Customer({
                 fullName: req.body.customerInfo.fullName,
                 phone: req.body.customerInfo.phone,
-                password: "111111",
+                password: md5("111111"),
                 addresses: [
                     {
                         province: req.body.location.province,
@@ -293,6 +295,8 @@ module.exports.editPatch = async (req, res) => {
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
+        const startTime = req.body.startTime;
+        const endTime = req.body.endTime;
 
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
@@ -336,8 +340,8 @@ module.exports.editPatch = async (req, res) => {
         while (curr <= end) {
             let objectDate = {
                 workingDate: curr.toDate(),
-                startTime: req.body.startTime,
-                endTime: req.body.endTime,
+                startTime: startTime,
+                endTime: endTime,
                 helper_id: "notAvailable",
                 status: "notDone",
                 helper_cost: 0

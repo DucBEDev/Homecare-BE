@@ -2,10 +2,11 @@ const mongoose = require("mongoose");
 
 const TimeOffSchema = new mongoose.Schema({
     helper_id: String,
-    date: Date, // Ngày nghỉ
-    startTime: String, // Giờ bắt đầu
-    endTime: String, // Giờ kết thúc
+    dateOff: Date, // Ngày nghỉ
+    startTime: Number, // Giờ bắt đầu (phút)
+    endTime: Number, // Giờ kết thúc (phút)
     reason: String,
+    status: String, // Trạng thái (approved, rejected, done)
     createdBy: {
         account_id: String,
         createdAt: {

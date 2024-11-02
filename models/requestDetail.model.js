@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const requestDetailSchema = new mongoose.Schema({
-    workingSDate: Date,
+    workingDate: Date,
     startTime: String, // Giờ bắt đầu làm việc
     endTime: String, // Giờ kết thúc làm việc
     helper_id: String,
