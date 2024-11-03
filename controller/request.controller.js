@@ -388,7 +388,7 @@ module.exports.detail = async (req, res) => {
             request: request,
             helpers: helpers,
             scheduleRequest: scheduleRequest,
-            coefficientOtherLists: coefficientOtherLists
+            coefficientOtherLists: coefficientOtherLists[0].coefficientList
         })
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
