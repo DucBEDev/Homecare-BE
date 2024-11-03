@@ -5,7 +5,7 @@ const requestDetailSchema = new mongoose.Schema({
     startTime: String, // Giờ bắt đầu làm việc
     endTime: String, // Giờ kết thúc làm việc
     helper_id: String,
-    status: String, // notDone - processing - done
+    status: String, // notDone - assigned - processing - done - cancelled
     helper_cost: Number
 }, {
     timestamps: true

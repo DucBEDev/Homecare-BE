@@ -375,7 +375,7 @@ module.exports.detail = async (req, res) => {
         };
     
         const request = await Request.findOne(find);
-        const helpers = await Helper.find({ deleted: false }).select("fullName");
+        const helpers = await Helper.find({ deleted: false }).select("fullName phone birthDate address baseFactor");
         const scheduleRequest = [];
 
         for (const id of request.scheduleIds) {
@@ -398,26 +398,90 @@ module.exports.detail = async (req, res) => {
     }
 }
 
-// [PATCH] /admin/requests/updateHelperToRequestDetails/:requestId
-module.exports.updateHelperToRequestDetails = async (req, res) => {
+// [PATCH] /admin/requests/detail/assignSubRequest/:requestDetailId
+module.exports.assignSubRequest = async (req, res) => {
     try {
-        const id = req.params.requestId;
+        const requestDetailId = req.params.requestDetailId;
         const helper_id = req.body.helper_id;
-        
-        const request = await Request.findOne({ _id: id }).select("scheduleIds startTime endTime service");
-        const helper_baseFactor = await Helper.findOne({ _id: helper_id }).select("baseFactor");
+        const startTime = new Date(req.body.startTime);
+        const endTime = new Date(req.body.endTime);
+        const helper_baseFactor = parseFloat(req.body.baseFactor);
+        const coefficient_service = parseFloat(req.body.coefficient_service);
+        const coefficient_other = parseFloat(req.body.coefficient_other);
+        const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_other, helper_baseFactor);
 
-        for (const scheduleId of request.scheduleIds) {
-            const totalCost = await calculateCost(request.startTime, request.endTime, request.service.coefficient_service, request.service.coefficient_other, helper_baseFactor.baseFactor);
+        await RequestDetail.updateOne(
+            { _id: requestDetailId },
+            { 
+                helper_id: helper_id,
+                helper_cost: totalCost,
+                status: "assigned"
+            }
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
+
+// [PATCH] /admin/requests/detail/assignFullRequest
+module.exports.assignFullRequest = async (req, res) => {
+    try {
+        const helper_id = req.body.helper_id;
+        const startTime = req.body.startTime;
+        const endTime = req.body.endTime;
+        const helper_baseFactor = req.body.baseFactor;
+        const coefficient_service = req.body.coefficient_service;
+        const coefficient_other = req.body.coefficient_other;
+        const scheduleIds = req.body.scheduleIds;
+
+        for (const scheduleId of scheduleIds) {
+            const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_other, helper_baseFactor);
             await RequestDetail.updateOne(
                 { _id: scheduleId },
                 { 
                     helper_id: helper_id,
                     helper_cost: totalCost,
-                    status: "pending"
+                    status: "assigned"
                 }
             );
         }
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
+
+// [PATCH] /admin/requests/detail/cancel/:requestDetailId
+module.exports.cancel = async (req, res) => {
+    try {
+        const id = req.params.requestDetailId;
+
+        await RequestDetail.updateOne(
+            { _id: id },
+            { status: "cancelled" }
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
+
+// [PATCH] /admin/requests/detail/changeTime/:requestDetailId
+module.exports.changeTime = async (req, res) => {
+    try {
+        const id = req.params.requestDetailId;
+
+        await RequestDetail.updateOne(
+            { _id: id },
+            { 
+                startTime: req.body.startTime,
+                endTime: req.body.endTime    
+            }
+        );
 
         res.json({ success: true });
     } catch (error) {

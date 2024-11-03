@@ -16,7 +16,7 @@ function convertTimeToMinutes(timeString) {
     return hours * 60 + minutes;
 };
 
-// Run every minute to check and update status
+// Run every hour to check and update status
 cron.schedule('0 * * * *', async () => {
     try {
         const currentTime = moment().format('YYYY-MM-DD');
