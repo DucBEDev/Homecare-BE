@@ -16,10 +16,9 @@ const moment = require("moment");
 const md5 = require('md5');
 
 // Function 
-async function calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_helper = 0, basicPrice = 0) {
+async function calculateCost(startTime, endTime, coefficient_OT, coefficient_other, coefficient_helper) {
     const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime baseSalary");
 
-    const daysDiff = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 3600 * 24));
     const hoursDiff = Math.ceil(endTime.getUTCHours() - startTime.getUTCHours());
     const officeStartTime = generalSetting.officeStartTime / 60;
     const officeEndTime = generalSetting.officeEndTime / 60;
@@ -34,19 +33,11 @@ async function calculateCost(startTime, endTime, coefficient_service, coefficien
         OTTotalHour += Math.abs(OTEndTime);
     }
     
-    let TotalCost = 0;
-    if (coefficient_helper) {
-        const baseCost = Math.floor(generalSetting.baseSalary * coefficient_helper * (hoursDiff - OTTotalHour) * coefficient_service);
-        const OTTotalCost = Math.floor(generalSetting.baseSalary * coefficient_helper * OTTotalHour * coefficient_OT * coefficient_service);
-        TotalCost = baseCost + OTTotalCost; // Tiền lương của người giúp việc
-    }
-    else {
-        const baseCost = Math.floor(basicPrice * (hoursDiff - OTTotalHour) * daysDiff * coefficient_service);
-        const OTTotalCost = Math.floor(basicPrice * OTTotalHour * daysDiff * coefficient_OT * coefficient_service);
-        TotalCost = baseCost + OTTotalCost; // Tiền khách hàng trả
-    }
+    const baseCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * (hoursDiff - OTTotalHour);
+    const OTCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * coefficient_OT * OTTotalHour;
+    const totalCost = baseCost + OTCost;
 
-    return TotalCost;
+    return totalCost;
 }
 
 function convertMinuteToHour(minute) {
@@ -161,8 +152,7 @@ module.exports.createPost = async (req, res) => {
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
 
-        const TotalCost = await calculateCost(req.body.startTime, req.body.endTime, coefficient_service, coefficient_other, 0, serviceBasePrice);
-        req.body.totalCost = TotalCost;
+        req.body.totalCost = parseInt(req.body.totalCost);
 
         let service = {
             title: serviceTitle, 
@@ -301,8 +291,7 @@ module.exports.editPatch = async (req, res) => {
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
 
-        const TotalCost = await calculateCost(req.body.startTime, req.body.endTime, coefficient_service, coefficient_other, serviceBasePrice);
-        req.body.totalCost = TotalCost;
+        req.body.totalCost = parseInt(req.body.totalCost);
 
         let service = {
             title: serviceTitle, 
@@ -378,6 +367,13 @@ module.exports.detail = async (req, res) => {
         const helpers = await Helper.find({ deleted: false }).select("fullName phone birthDate address baseFactor");
         const scheduleRequest = [];
 
+        const coefficientOtherLists = await CostFactorType.find(
+            { 
+                deleted: false,
+                applyTo: "other" 
+            }
+        ).select("coefficientList");
+
         for (const id of request.scheduleIds) {
             const record = await RequestDetail.findOne({ _id: id });
             let helperName = "null";
@@ -391,7 +387,8 @@ module.exports.detail = async (req, res) => {
         res.json({
             request: request,
             helpers: helpers,
-            scheduleRequest: scheduleRequest
+            scheduleRequest: scheduleRequest,
+            coefficientOtherLists: coefficientOtherLists
         })
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
@@ -406,9 +403,9 @@ module.exports.assignSubRequest = async (req, res) => {
         const startTime = new Date(req.body.startTime);
         const endTime = new Date(req.body.endTime);
         const helper_baseFactor = parseFloat(req.body.baseFactor);
-        const coefficient_service = parseFloat(req.body.coefficient_service);
+        const coefficient_OT = parseFloat(req.body.coefficient_OT);
         const coefficient_other = parseFloat(req.body.coefficient_other);
-        const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_other, helper_baseFactor);
+        const totalCost = await calculateCost(startTime, endTime, coefficient_OT, coefficient_other, helper_baseFactor);
 
         await RequestDetail.updateOne(
             { _id: requestDetailId },
@@ -432,12 +429,12 @@ module.exports.assignFullRequest = async (req, res) => {
         const startTime = req.body.startTime;
         const endTime = req.body.endTime;
         const helper_baseFactor = req.body.baseFactor;
-        const coefficient_service = req.body.coefficient_service;
+        const coefficient_OT = req.body.coefficient_OT;
         const coefficient_other = req.body.coefficient_other;
         const scheduleIds = req.body.scheduleIds;
 
         for (const scheduleId of scheduleIds) {
-            const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_other, helper_baseFactor);
+            const totalCost = await calculateCost(startTime, endTime, coefficient_OT, coefficient_other, helper_baseFactor);
             await RequestDetail.updateOne(
                 { _id: scheduleId },
                 { 
