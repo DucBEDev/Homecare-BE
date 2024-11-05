@@ -151,9 +151,9 @@ module.exports.createPost = async (req, res) => {
         
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-
+        
         req.body.totalCost = parseInt(req.body.totalCost);
-
+        
         let service = {
             title: serviceTitle, 
             coefficient_service: coefficient_service,
@@ -161,15 +161,15 @@ module.exports.createPost = async (req, res) => {
             cost: serviceBasePrice 
         };
         req.body.service = service;
-
+        
         let customerInfo = {
             fullName: req.body.fullName,
             phone: req.body.phone,
             address: `${req.body.address}, ${req.body.ward}, ${req.body.district}, ${req.body.province}`,
-            usedPoint: Math.floor(TotalCost * 1 / 100)
+            usedPoint: Math.floor(req.body.totalCost * 1 / 100)
         }
         req.body.customerInfo = customerInfo;
-
+        
         let location = {
             province: req.body.province,
             district: req.body.district,
@@ -197,7 +197,6 @@ module.exports.createPost = async (req, res) => {
             scheduleIds.push(requestDetail.id);
         }
         req.body.scheduleIds = scheduleIds;
-
         const request = new Request(req.body);
         await request.save();
 
@@ -305,7 +304,7 @@ module.exports.editPatch = async (req, res) => {
             fullName: req.body.fullName,
             phone: req.body.phone,
             address: `${req.body.address}, ${req.body.ward}, ${req.body.district}, ${req.body.province}`,
-            usedPoint: Math.floor(TotalCost * 1 / 100)
+            usedPoint: Math.floor(req.body.totalCost * 1 / 100)
         }
         req.body.customerInfo = customerInfo;
 
