@@ -370,12 +370,19 @@ module.exports.detail = async (req, res) => {
         ).select("coefficientList");
 
         for (const id of request.scheduleIds) {
-            const record = await RequestDetail.findOne({ _id: id });
-            let helperName = "null";
+            let record = await RequestDetail.findOne({ _id: id });
+
+            record = {
+                ...record.toObject(),
+                helperName: "null",
+                startTime: moment(record.startTime).utc().format("HH:mm"),
+                endTime: moment(record.endTime).utc().format("HH:mm")
+            };
+
             if (record.helper_id != "notAvailable") {
                helperName = await Helper.findOne({ _id: record.helper_id }).select("fullName");
+               record.helperName = helperName.fullName;
             }
-            record.helperName = helperName.fullName;
             scheduleRequest.push(record);
         }
     
