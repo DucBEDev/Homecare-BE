@@ -146,8 +146,6 @@ module.exports.createPost = async (req, res) => {
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
-        const startTime = req.body.startTime;
-        const endTime = req.body.endTime;
         
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
@@ -183,8 +181,8 @@ module.exports.createPost = async (req, res) => {
         while (curr <= end) {
             let objectDate = {
                 workingDate: curr.toDate(),
-                startTime: startTime,
-                endTime: endTime,
+                startTime: req.body.startTime,
+                endTime: req.body.endTime,
                 helper_id: "notAvailable",
                 status: "notDone",
                 helper_cost: 0
@@ -284,8 +282,6 @@ module.exports.editPatch = async (req, res) => {
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
-        const startTime = req.body.startTime;
-        const endTime = req.body.endTime;
 
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
@@ -328,8 +324,8 @@ module.exports.editPatch = async (req, res) => {
         while (curr <= end) {
             let objectDate = {
                 workingDate: curr.toDate(),
-                startTime: startTime,
-                endTime: endTime,
+                startTime: req.body.startTime,
+                endTime: req.body.endTime,
                 helper_id: "notAvailable",
                 status: "notDone",
                 helper_cost: 0
@@ -400,7 +396,7 @@ module.exports.assignSubRequest = async (req, res) => {
         const requestDetailId = req.params.requestDetailId;
         const helper_id = req.body.helper_id;
         const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();;
+        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         const helper_baseFactor = parseFloat(req.body.helper_baseFactor);
         const coefficient_OT = parseFloat(req.body.coefficient_ot);
         const coefficient_other = parseFloat(req.body.coefficient_other);
@@ -425,8 +421,8 @@ module.exports.assignSubRequest = async (req, res) => {
 module.exports.assignFullRequest = async (req, res) => {
     try {
         const helper_id = req.body.helper_id;
-        const startTime = req.body.startTime;
-        const endTime = req.body.endTime;
+        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         const helper_baseFactor = req.body.baseFactor;
         const coefficient_OT = req.body.coefficient_OT;
         const coefficient_other = req.body.coefficient_other;
@@ -474,8 +470,8 @@ module.exports.changeTime = async (req, res) => {
         await RequestDetail.updateOne(
             { _id: id },
             { 
-                startTime: req.body.startTime,
-                endTime: req.body.endTime    
+                startTime: moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate(),
+                endTime: moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate()    
             }
         );
 
