@@ -33,9 +33,9 @@ async function calculateCost(startTime, endTime, coefficient_OT, coefficient_oth
         OTTotalHour += Math.abs(OTEndTime);
     }
     
-    const baseCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * (hoursDiff - OTTotalHour);
-    const OTCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * coefficient_OT * OTTotalHour;
-    const totalCost = baseCost + OTCost;
+    // const baseCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * (hoursDiff - OTTotalHour);
+    // const OTCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * coefficient_OT * OTTotalHour;
+    const totalCost = generalSetting.baseSalary * coefficient_helper * ((coefficient_OT * OTTotalHour) + (coefficient_other * (hoursDiff - OTTotalHour)));
     
     return totalCost;
 }
