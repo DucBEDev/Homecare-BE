@@ -477,8 +477,8 @@ module.exports.changeTime = async (req, res) => {
         await RequestDetail.updateOne(
             { _id: id },
             { 
-                startTime: moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate(),
-                endTime: moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate()    
+                startTime: moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate(),
+                endTime: moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate()    
             }
         );
 
