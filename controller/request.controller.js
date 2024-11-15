@@ -16,7 +16,7 @@ const moment = require("moment");
 const md5 = require('md5');
 
 // Function 
-async function calculateCost(startTime, endTime, coefficient_OT, coefficient_other, coefficient_helper) {
+async function calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, coefficient_helper) {
     const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime baseSalary");
 
     const hoursDiff = Math.ceil(endTime.getUTCHours() - startTime.getUTCHours());
@@ -35,7 +35,7 @@ async function calculateCost(startTime, endTime, coefficient_OT, coefficient_oth
     
     // const baseCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * (hoursDiff - OTTotalHour);
     // const OTCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * coefficient_OT * OTTotalHour;
-    const totalCost = generalSetting.baseSalary * coefficient_helper * ((coefficient_OT * OTTotalHour) + (coefficient_other * (hoursDiff - OTTotalHour)));
+    const totalCost = generalSetting.baseSalary * coefficient_service * coefficient_helper * ((coefficient_OT * OTTotalHour) + (coefficient_other * (hoursDiff - OTTotalHour)));
     
     return totalCost;
 }
@@ -59,7 +59,7 @@ module.exports.index = async (req, res) => {
             // Auto update status in real-time
             const startTime = moment(request.startTime).utc();
             const endTime = moment(request.endTime).utc();
-            const now = moment().utc().add(7, 'hours');
+            const now = moment().utc();
 
             if (now.isBetween(startTime, endTime)) {
                 request.status = "unconfirmed";
@@ -147,8 +147,8 @@ module.exports.createPost = async (req, res) => {
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         
-        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
         
         req.body.totalCost = parseInt(req.body.totalCost);
         
@@ -232,10 +232,25 @@ module.exports.createPost = async (req, res) => {
 module.exports.deleteItem = async (req, res) => {
     try {
         const id = req.params.id;
+        const scheduleIds = req.body.scheduleIds;
+
+        for (const id of scheduleIds) {
+            await RequestDetail.updateOne(
+                { _id: id },
+                { 
+                    status: "cancelled",
+                    helper_cost: 0,
+                    helper_id: "notAvailable"
+                }
+            );
+        }
 
         await Request.updateOne(
             { _id: id },
-            { deleted: true }
+            { 
+                deleted: true,
+                status: "cancelled"
+            }
         )
 
         res.json({ success: true });
@@ -283,8 +298,8 @@ module.exports.editPatch = async (req, res) => {
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
 
-        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
 
         req.body.totalCost = parseInt(req.body.totalCost);
 
@@ -402,12 +417,13 @@ module.exports.assignSubRequest = async (req, res) => {
     try {
         const requestDetailId = req.params.requestDetailId;
         const helper_id = req.body.helper_id;
-        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
         const helper_baseFactor = parseFloat(req.body.helper_baseFactor);
         const coefficient_OT = parseFloat(req.body.coefficient_ot);
         const coefficient_other = parseFloat(req.body.coefficient_other);
-        const totalCost = await calculateCost(startTime, endTime, coefficient_OT, coefficient_other, helper_baseFactor);
+        const coefficient_service = parseFloat(req.body.coefficient_service);
+        const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
         
         await RequestDetail.updateOne(
             { _id: requestDetailId },
@@ -428,15 +444,16 @@ module.exports.assignSubRequest = async (req, res) => {
 module.exports.assignFullRequest = async (req, res) => {
     try {
         const helper_id = req.body.helper_id;
-        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
         const helper_baseFactor = req.body.baseFactor;
         const coefficient_OT = req.body.coefficient_OT;
         const coefficient_other = req.body.coefficient_other;
+        const coefficient_service = req.body.coefficient_service;
         const scheduleIds = req.body.scheduleIds;
 
         for (const scheduleId of scheduleIds) {
-            const totalCost = await calculateCost(startTime, endTime, coefficient_OT, coefficient_other, helper_baseFactor);
+            const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
             await RequestDetail.updateOne(
                 { _id: scheduleId },
                 { 
@@ -460,7 +477,11 @@ module.exports.cancel = async (req, res) => {
 
         await RequestDetail.updateOne(
             { _id: id },
-            { status: "cancelled" }
+            { 
+                status: "cancelled",
+                helper_cost: 0,
+                helper_id: "notAvailable"
+            }
         );
 
         res.json({ success: true });
@@ -473,12 +494,20 @@ module.exports.cancel = async (req, res) => {
 module.exports.changeTime = async (req, res) => {
     try {
         const id = req.params.requestDetailId;
+        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        const helper_baseFactor = parseFloat(req.body.helper_baseFactor);
+        const coefficient_OT = parseFloat(req.body.coefficient_ot);
+        const coefficient_other = parseFloat(req.body.coefficient_other);
+        const coefficient_service = parseFloat(req.body.coefficient_service);
+        const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
 
         await RequestDetail.updateOne(
             { _id: id },
             { 
-                startTime: moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate(),
-                endTime: moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate()    
+                startTime: startTime,
+                endTime: endTime,
+                helper_cost: totalCost    
             }
         );
 
