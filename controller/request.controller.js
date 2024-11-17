@@ -517,25 +517,41 @@ module.exports.changeTime = async (req, res) => {
     }
 }
 
-// [GET] /admin/requests/updateRequestDone/:requestId
-module.exports.updateRequestDone = async (req, res) => {
+// [GET] /admin/requests/updateRequestDetailDone/:requestDetailId
+module.exports.updateRequestDetailDone = async (req, res) => {
     try {
-        const id = req.params.requestId;
-    
-        const request = await Request.findOne({ _id: id }).select("scheduleIds startTime endTime customerInfo service totalCost");
+        const id = req.params.requestDetailId;
+        
+        const helper_cost = await RequestDetail.findOne({ _id: id }).select("helper_cost");
 
-        const requestDetail = await RequestDetail.find({ _id: { $in: request.scheduleIds } });
-        let helperCost = 0;
-        for (const detail of requestDetail) {
-            helperCost += detail.helper_cost;
-        }
-
-        const profit = request.totalCost - helperCost;
-
-        res.json({
+        res.json({ 
             success: true,
-            profit: profit
-        })
+            helper_cost: helper_cost.helper_cost 
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
+
+// [PATCH] /admin/requests/updateRequestDetailDone/:requestDetailId
+module.exports.updateRequestDetailDonePatch = async (req, res) => {
+    try {
+        const id = req.params.requestDetailId;
+        const comment = {
+            review: req.body.review,
+            loseThings: req.body.loseThings,
+            breakThings: req.body.breakThings
+        };
+        
+        await RequestDetail.updateOne(
+            { _id: id },
+            { 
+                status: "done",
+                comment: comment
+            }
+        );
+
+        res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
@@ -545,18 +561,32 @@ module.exports.updateRequestDone = async (req, res) => {
 module.exports.updateRequestDonePatch = async (req, res) => {
     try {
         const id = req.params.requestId;
-        const comment = {
-            review: req.body.review,
-            loseThings: req.body.loseThings,
-            breakThings: req.body.breakThings
-        };
+        const request = await Request.findOne({ _id: id }).select("scheduleIds startTime endTime customerInfo service totalCost");
+
+        for (const id of request.scheduleIds) {
+            const isDone = await RequestDetail.findOne({
+                _id: id,
+                status: "notDone"
+            });
+            
+            if (isDone == null) {
+                return res.status(400).json({ error: 'done request error' });
+            }
+        }
+
+        const requestDetail = await RequestDetail.find({ _id: { $in: request.scheduleIds } });
+        let helperCost = 0;
+        for (const detail of requestDetail) {
+            helperCost += detail.helper_cost;
+        }
+
+        const profit = request.totalCost - helperCost;
         
         await Request.updateOne(
             { _id: id },
             { 
                 status: "done",
-                comment: comment,
-                profit: req.body.profit 
+                profit: profit 
             }
         );
 

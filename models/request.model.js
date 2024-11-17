@@ -11,11 +11,6 @@ const requestSchema = new mongoose.Schema({
     },
     startTime: Date,
     endTime: Date,
-    comment: {
-        review: String,
-        loseThings: Boolean,
-        breakThings: Boolean
-    },
     customerInfo: {
         fullName: String,
         phone: String,
@@ -30,7 +25,10 @@ const requestSchema = new mongoose.Schema({
         cost: Number // Số tiền phải trả cho dịch vụ đó trên 1 giờ
     },
     totalCost: Number,
-    profit: Number,
+    profit: {
+        type: Number,
+        default: 0
+    },
     status: {
         type: String,
         default: "notDone"
