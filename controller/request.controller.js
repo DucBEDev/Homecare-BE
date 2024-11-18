@@ -266,6 +266,12 @@ module.exports.edit = async (req, res) => {
             _id: req.params.id,
             deleted: false
         });
+        let temp = {
+            ...request.toObject(),
+            formatStartTime: moment.utc(request.startTime).format("HH:mm"),
+            formatEndTime: moment.utc(request.endTime).format("HH:mm")
+        }
+
         const locations = await Location.find({});
         const services = await Service.find({
             deleted: false,
@@ -280,7 +286,7 @@ module.exports.edit = async (req, res) => {
 
         res.json({
             success: true,
-            request: request,
+            request: temp,
             locations: locations,
             services: services,
             coefficientLists: coefficientLists
@@ -297,12 +303,11 @@ module.exports.editPatch = async (req, res) => {
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
-
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
-
+        
         req.body.totalCost = parseInt(req.body.totalCost);
-
+        
         let service = {
             title: serviceTitle, 
             coefficient_service: coefficient_service,
@@ -310,7 +315,7 @@ module.exports.editPatch = async (req, res) => {
             cost: serviceBasePrice 
         };
         req.body.service = service;
-
+        
         let customerInfo = {
             fullName: req.body.fullName,
             phone: req.body.phone,
@@ -318,19 +323,19 @@ module.exports.editPatch = async (req, res) => {
             usedPoint: Math.floor(req.body.totalCost * 1 / 100)
         }
         req.body.customerInfo = customerInfo;
-
+        
         let location = {
             province: req.body.province,
             district: req.body.district,
             ward: req.body.ward
         }
         req.body.location = location;
-
+        
         // Delete old scheduleIds record
         const scheduleListDetail = await Request.findOne({
             _id: req.params.id,
             deleted: false
-        }).select("scheduleIds");
+        });
         await RequestDetail.deleteMany({ _id: { $in: scheduleListDetail.scheduleIds } });
 
         const scheduleIds = [];
@@ -521,7 +526,6 @@ module.exports.changeTime = async (req, res) => {
 module.exports.updateRequestDetailDone = async (req, res) => {
     try {
         const id = req.params.requestDetailId;
-        
         const helper_cost = await RequestDetail.findOne({ _id: id }).select("helper_cost");
 
         res.json({ 
@@ -569,7 +573,7 @@ module.exports.updateRequestDonePatch = async (req, res) => {
                 status: "notDone"
             });
             
-            if (isDone == null) {
+            if (isDone != null) {
                 return res.status(400).json({ error: 'done request error' });
             }
         }
