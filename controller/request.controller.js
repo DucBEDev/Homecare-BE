@@ -570,7 +570,7 @@ module.exports.updateRequestDonePatch = async (req, res) => {
         for (const id of request.scheduleIds) {
             const isDone = await RequestDetail.findOne({
                 _id: id,
-                status: "notDone"
+                status: { $in: ["notDone", "assigned"] }
             });
             
             if (isDone != null) {
