@@ -502,7 +502,7 @@ module.exports.changeTime = async (req, res) => {
         const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
         const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
         const helper_baseFactor = parseFloat(req.body.helper_baseFactor);
-        const coefficient_OT = parseFloat(req.body.coefficient_ot);
+        const coefficient_OT = parseFloat(req.body.coefficient_OT);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
