@@ -10,6 +10,7 @@ router.delete('/delete/:id', controller.deleteItem);
 router.get('/edit/:id', controller.edit);
 router.patch('/edit/:id', controller.editPatch);
 router.get('/detail/:id', controller.detail);
+router.get('/detail/history/:requestDetailId', controller.history);
 router.patch('/detail/assignFullRequest', controller.assignFullRequest);
 router.patch('/detail/assignSubRequest/:requestDetailId', controller.assignSubRequest);
 router.patch('/detail/cancel/:requestDetailId', controller.cancel);

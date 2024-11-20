@@ -599,3 +599,18 @@ module.exports.updateRequestDonePatch = async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
 }
+
+// [GET] /admin/requests/detail/history/:requestDetailId
+module.exports.history = async (req, res) => {
+    try {
+        const id = req.params.requestDetailId;
+
+        const record = await RequestDetail.findOne( { _id: id } ).select("comment");
+        res.json({
+            success: true,
+            comment: record.comment
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
