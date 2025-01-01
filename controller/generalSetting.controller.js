@@ -16,7 +16,7 @@ module.exports.index = async (req, res) => {
     }
 }
 
-// [POST] /admin/generalSettings/update
+// [PATCH] /admin/generalSettings/update
 module.exports.update = async (req, res) => {
     try {
         await GeneralSetting.updateOne({ id: "generalSetting" }, req.body);

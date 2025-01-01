@@ -9,7 +9,11 @@ const GeneralSettingSchema = new mongoose.Schema({
     openHour: Number, // Thời gian mở cửa, lưu đơn vị phút
     closeHour: Number, //Thời gian đóng cửa, lưu đơn vị phút
     officeStartTime: Number, // Giờ bắt đầu hành chính, lưu đơn vị phút
-    officeEndTime: Number // Giờ kết thúc hành chính, lưu đơn vị phút
+    officeEndTime: Number, // Giờ kết thúc hành chính, lưu đơn vị phút
+    companyName: String,
+    companyEmail: String,
+    companyAddress: String,
+    companyPhone: String
 }, {
     timestamps: true
 });

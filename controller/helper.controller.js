@@ -11,7 +11,6 @@ module.exports.index = async (req, res) => {
         let find = { deleted: "false" };
 
         const helpers = await Helper.find(find);
-
         res.json({
             success: true,
             helpers: helpers
