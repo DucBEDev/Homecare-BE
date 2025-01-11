@@ -118,9 +118,7 @@ module.exports.permissions = async (req, res) => {
 // [PATCH] /admin/roles/permissions
 module.exports.permissionsPatch = async (req, res) => {
     try {
-        const permissions = JSON.parse(req.body.permissions);
-
-        for (const item of permissions) {
+        for (const item of req.body.permissions) {
             const id = item.id;
             const permissions = item.permissions;
 
