@@ -6,13 +6,13 @@ const GeneralSetting = require("../models/generalSetting.model");
 module.exports.index = async (req, res) => {
     try {
         const generalSetting = await GeneralSetting.findOne({ id: "generalSetting" }).lean();
-
+        
         res.json({ 
             success: true,
             generalSetting: {
                 ...generalSetting,
-                holidayStartDate: generalSetting.holidayStartDate.toISOString().split('T')[0],
-                holidayEndDate: generalSetting.holidayEndDate.toISOString().split('T')[0]
+                holidayStartDate: generalSetting.holidayStartDate != null ? generalSetting.holidayStartDate.toISOString().split('T')[0] : "",
+                holidayEndDate: generalSetting.holidayEndDate != null ? generalSetting.holidayEndDate.toISOString().split('T')[0] : ""
             }
         })
     } catch (error) {
@@ -23,8 +23,11 @@ module.exports.index = async (req, res) => {
 // [PATCH] /admin/generalSettings/update
 module.exports.update = async (req, res) => {
     try {
-        req.body.holidayStartDate = new Date(req.body.holidayStartDate);
-        req.body.holidayEndDate = new Date(req.body.holidayEndDate);
+        if (req.body.holidayStartDate != "")
+            req.body.holidayStartDate = new Date(req.body.holidayStartDate);
+        
+        if (req.body.holidayEndDate != "")
+            req.body.holidayEndDate = new Date(req.body.holidayEndDate);
 
         await GeneralSetting.updateOne({ id: "generalSetting" }, req.body);
 
