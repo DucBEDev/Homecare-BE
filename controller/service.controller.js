@@ -152,10 +152,6 @@ module.exports.edit = async (req, res) => {
 module.exports.editPatch = async (req, res) => {
     try {
         const id = req.params.id;
-
-        req.body.basicPrice = parseInt(req.body.basicPrice);
-        req.body.overTimePrice_Helper = parseInt(req.body.overTimePrice_Helper);
-        req.body.overTimePrice_Customer = parseInt(req.body.overTimePrice_Customer);
         
         await Service.updateOne(
             { _id: id }, 

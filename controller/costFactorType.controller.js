@@ -113,10 +113,18 @@ module.exports.edit = async (req, res) => {
 // [PATCH] /admin/costFactors/edit/:id
 module.exports.editPatch = async (req, res) => {
     try {
-        req.body.coefficient = parseFloat(req.body.coefficient);
+        req.body.value = parseFloat(req.body.value);
+
         await CostFactorType.updateOne(
-            { _id: req.params.id },
-            req.body
+            {
+              applyTo: req.body.applyTo,
+              "coefficientList._id": req.params.id  
+            },
+            {
+              $set: {
+                "coefficientList.$": req.body  
+              }
+            }
         );
 
         res.json({ success: true });
