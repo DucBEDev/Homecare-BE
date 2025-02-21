@@ -1,17 +1,13 @@
 const mongoose = require("mongoose");
 
-const BlogSchema = new mongoose.Schema({
+const DiscountSchema = new mongoose.Schema({
     title: String,
     description: String,
-    img: String,
-    content: String,
-    author: String,
-    type: String, // Quảng cáo, Thông báo chính sách,...
-    status: String,
-    date: {
-        type: Date,
-        default: Date.now
-    },
+    usageLimit: Number,
+    applyStartDate: Date,
+    applyEndDate: Date,
+    rate: Number,
+    status: Boolean,
     deleted: {
         type: Boolean,
         default: false
@@ -34,6 +30,6 @@ const BlogSchema = new mongoose.Schema({
     timestamps: true
 });
 
-const Blog = mongoose.model("Blog", BlogSchema, "blogs");
+const Discount = mongoose.model("Discount", DiscountSchema, "discounts");
 
-module.exports = Blog;
+module.exports = Discount;

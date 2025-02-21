@@ -64,7 +64,15 @@ module.exports.editPatch = async (req, res) => {
 // [DELETE] /admin/blogs/deleteBlog/:id
 module.exports.deleteBlog = async (req, res) => {
     try {
-        await Blog.deleteOne( { _id: req.params.id } );
+        const id = req.params.id;
+
+        await Blog.updateOne(
+            { _id: id },
+            { 
+                status: "inactive",
+                deleted: true
+            }
+        )
         
         res.json({
             success: true

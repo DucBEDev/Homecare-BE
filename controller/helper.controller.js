@@ -74,14 +74,9 @@ module.exports.createPost = async (req, res) => {
             })
             return;
         }
-    
+        
         if (typeof(req.body.districts) === "string") {
             req.body.districts = [req.body.districts];
-        }
-        let districts = req.body.districts.map(district => district.split(",").join(" "));
-        req.body.workingArea = {
-            province: req.body.province,
-            districts: districts
         }
     
         if (typeof(req.body.jobs) === "string") {
@@ -91,9 +86,11 @@ module.exports.createPost = async (req, res) => {
         if (req.body.avatar) {
             req.body.avatar = req.body.avatar[0];
         }
-    
+        
         const newHelper = new Helper(req.body);
         await newHelper.save();
+
+        res.json({success: true}); 
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
@@ -229,7 +226,6 @@ module.exports.editPatch = async (req, res) => {
     try {
         const helperIdExist = await Helper.findOne(
             { 
-                _id: { $ne: req.params.id },
                 helper_id: req.body.helper_id,
                 deleted: false
             }
@@ -238,13 +234,12 @@ module.exports.editPatch = async (req, res) => {
             res.json({
                 success: false,
                 msg: "CMND người giúp việc đã tồn tại"
-            });
+            })
             return;
         }
     
         const phoneExist = await Helper.findOne(
             { 
-                _id: { $ne: req.params.id },
                 phone: req.body.phone,
                 deleted: false
             }
@@ -253,19 +248,16 @@ module.exports.editPatch = async (req, res) => {
             res.json({
                 success: false,
                 msg: "Số điện thoại người giúp việc đã tồn tại"
-            });
+            })
             return;
         }
         
         if (typeof(req.body.districts) === "string") {
             req.body.districts = [req.body.districts];
         }
-        
-        let districts = req.body.districts.map(district => district.split(",").join(" "));
     
-        req.body.workingArea = {
-            province: req.body.province,
-            districts: districts
+        if (typeof(req.body.jobs) === "string") {
+            req.body.jobs = [req.body.jobs];
         }
     
         if (req.body.avatar) {

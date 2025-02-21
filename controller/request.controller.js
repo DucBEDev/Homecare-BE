@@ -90,13 +90,14 @@ module.exports.create = async (req, res) => {
         const coefficientLists = await CostFactorType.find(
             { 
                 deleted: false,
+                status: "active",
                 applyTo: { $in: ["service", "other"] } 
             }
         ).select("coefficientList applyTo");
-
         const serviceList = [];
         const coefficientOtherList = [];
-        for (let i = 0; i <  coefficientLists.length; i++) {
+
+        for (let i = 0; i < coefficientLists.length; i++) {
             if (coefficientLists[i].applyTo == "service") {
                 for (let j = 0; j < coefficientLists[i].coefficientList.length; j++) {
                     for (let k = 0; k < services.length; k++) {
@@ -129,7 +130,7 @@ module.exports.create = async (req, res) => {
         }
 
         res.json({
-            locations: locations,
+            // locations: locations,
             serviceList: serviceList,
             coefficientOtherList: coefficientOtherList,
             timeList: timeList
