@@ -103,8 +103,8 @@ module.exports.create = async (req, res) => {
                     for (let k = 0; k < services.length; k++) {
                         if (services[k].coefficient_id == coefficientLists[i].coefficientList[j].id) {
                             serviceList.push({
-                                title: services[j].title,
-                                basicPrice: services[j].basicPrice,
+                                title: services[k].title,
+                                basicPrice: services[k].basicPrice,
                                 coefficient: coefficientLists[i].coefficientList[j].value  
                             });
                         }

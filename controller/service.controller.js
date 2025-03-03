@@ -7,24 +7,67 @@ const CostFactorType = require("../models/costFactorType.model");
 module.exports.index = async (req, res) => {
     try {
         let find = { deleted: false };
-        const services = await Service.find(find);
 
-        const records = await CostFactorType.findOne(
-            { 
-                deleted: false,
-                applyTo: "service"
+        const services = await Service.aggregate([
+            { $match: find },
+            {
+                $lookup: {
+                    from: "costFactorTypes",
+                    let: { coefficientId: "$coefficient_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$applyTo", "service"] }, deleted: false } },
+                        { $unwind: "$coefficientList" },
+                        {
+                            $addFields: {
+                                "coefficientList._id": { $toString: "$coefficientList._id" } // Chuyển _id thành string
+                            }
+                        },
+                        {
+                            $match: {
+                                $expr: { $eq: ["$coefficientList._id", "$$coefficientId"] }
+                            }
+                        },
+                        {
+                            $project: {
+                                coefficientValue: "$coefficientList.value",
+                                coefficientTitle: "$coefficientList.title"
+                            }
+                        }
+                    ],
+                    as: "coefficientData"
+                }
+            },
+            {
+                $unwind: { path: "$coefficientData", preserveNullAndEmptyArrays: true }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    title: 1,
+                    basicPrice: 1,
+                    description: 1,
+                    status: 1,
+                    coefficient_id: 1,
+                    coefficientValue: "$coefficientData.coefficientValue",
+                    coefficientTitle: "$coefficientData.coefficientTitle"
+                }
             }
-        ).select("coefficientList");
+        ]);
+
+        const records = await CostFactorType.findOne({
+            deleted: false,
+            applyTo: "service"
+        }).select("coefficientList");
 
         res.json({
             success: true,
             services: services,
-            coefficientList: records.coefficientList
-        })
+            coefficientList: records ? records.coefficientList : []
+        });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });      
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
-}
+};
 
 // [POST] /admin/services/create
 module.exports.createPost = async (req, res) => {
