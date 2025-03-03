@@ -52,8 +52,11 @@ module.exports.index = async (req, res) => {
 
         const records = await Request.find({
             deleted: false,
-            status: status
+            ...(status === 'history' 
+                ? { status: { $in: ['done', 'cancelled'] } } 
+                : { status: { $nin: ['done', 'cancelled'] } })
         });
+
 
         records.forEach((request) => {
             // Auto update status in real-time
