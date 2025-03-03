@@ -4,7 +4,6 @@ const router = express.Router();
 const controller = require("../controller/service.controller")
 
 router.get('/', controller.index);
-router.get('/create', controller.create);
 router.post('/create', controller.createPost);
 router.patch("/change-multi", controller.changeMulti);
 router.patch("/change-status/:status/:id", controller.changeStatus);

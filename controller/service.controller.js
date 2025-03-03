@@ -7,21 +7,8 @@ const CostFactorType = require("../models/costFactorType.model");
 module.exports.index = async (req, res) => {
     try {
         let find = { deleted: false };
-
         const services = await Service.find(find);
 
-        res.json({
-            success: true,
-            services: services
-        })
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });      
-    }
-}
-
-// [GET] /admin/services/create
-module.exports.create = async (req, res) => {
-    try {
         const records = await CostFactorType.findOne(
             { 
                 deleted: false,
@@ -31,10 +18,11 @@ module.exports.create = async (req, res) => {
 
         res.json({
             success: true,
+            services: services,
             coefficientList: records.coefficientList
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'An error occurred while fetching requests' });      
     }
 }
 

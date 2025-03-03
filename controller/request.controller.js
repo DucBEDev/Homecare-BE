@@ -96,7 +96,7 @@ module.exports.create = async (req, res) => {
         ).select("coefficientList applyTo");
         const serviceList = [];
         const coefficientOtherList = [];
-
+       
         for (let i = 0; i < coefficientLists.length; i++) {
             if (coefficientLists[i].applyTo == "service") {
                 for (let j = 0; j < coefficientLists[i].coefficientList.length; j++) {
@@ -120,7 +120,7 @@ module.exports.create = async (req, res) => {
                 }
             }
         }
-
+        
         const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime openHour closeHour");
         const timeList = {
             officeStartTime: convertMinuteToHour(generalSetting.officeStartTime),
@@ -130,7 +130,7 @@ module.exports.create = async (req, res) => {
         }
 
         res.json({
-            // locations: locations,
+            locations: locations,
             serviceList: serviceList,
             coefficientOtherList: coefficientOtherList,
             timeList: timeList
@@ -382,17 +382,16 @@ module.exports.detail = async (req, res) => {
         const request = await Request.findOne(find);
         const helpers = await Helper.find({ deleted: false }).select("fullName phone birthDate address baseFactor");
         const scheduleRequest = [];
-
         const coefficientOtherLists = await CostFactorType.find(
             { 
                 deleted: false,
                 applyTo: "other" 
             }
         ).select("coefficientList");
-
+        
         for (const id of request.scheduleIds) {
             let record = await RequestDetail.findOne({ _id: id });
-
+            
             record = {
                 ...record.toObject(),
                 helperName: "null",
