@@ -442,6 +442,19 @@ module.exports.assignSubRequest = async (req, res) => {
             }
         );
 
+        const requestDetail = await RequestDetail.findOne({ _id: requestDetailId });
+        const parentRequest = await Request.findOne({ 
+            scheduleIds: requestDetailId,
+            status: { $nin: ["done", "cancelled"] } 
+        });
+        
+        if (parentRequest) {
+            await Request.updateOne(
+                { _id: parentRequest._id },
+                { status: "processing" }
+            );
+        }
+
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
@@ -469,6 +482,18 @@ module.exports.assignFullRequest = async (req, res) => {
                     helper_cost: totalCost,
                     status: "assigned"
                 }
+            );
+        }
+
+        const parentRequest = await Request.findOne({ 
+            scheduleIds: { $in: scheduleIds },
+            status: { $nin: ["done", "cancelled"] } 
+        });
+
+        if (parentRequest) {
+            await Request.updateOne(
+                { _id: parentRequest._id },
+                { status: "processing" }
             );
         }
 
