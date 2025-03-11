@@ -79,14 +79,41 @@ module.exports.index = async (req, res) => {
     try {
         const helperId = req.params.helperId;
 
-        const helperInfo = await Helper.find({
+        const helperInfo = await Helper.findOne({
             _id: helperId,
             deleted: false
         }).select("helper_id fullName birthDate phone workingArea");
+        console.log(helperInfo)
 
-        res.json({ helperInfo: helperInfo });
+        if (!helperInfo) {
+            return res.status(404).json({ error: 'Helper not found' });
+        }
+
+        const startOfMonth = moment().startOf('month').startOf('day');
+        const endOfMonth = moment().endOf('month').endOf('day');
+
+        const timeOffs = await TimeOff.find({
+            helper_id: helperId,
+            dateOff: {
+                $gte: startOfMonth.toDate(),
+                $lte: endOfMonth.toDate()
+            }
+        }).select("dateOff startTime endTime status");
+
+        const formattedTimeOffs = timeOffs.map(timeOff => ({
+            ...timeOff.toObject(),
+            dateOff: moment(timeOff.dateOff).format('YYYY-MM-DD'),
+            startTime: moment().startOf('day').add(timeOff.startTime, 'minutes').format('HH:mm'),
+            endTime: moment().startOf('day').add(timeOff.endTime, 'minutes').format('HH:mm')
+        }));
+
+        res.json({ 
+            helperInfo: helperInfo,
+            timeOffs: formattedTimeOffs
+        });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        console.error('Error in index function:', error);
+        res.status(500).json({ error: 'An error occurred while fetching helper information and time offs' });   
     }
 }
 
