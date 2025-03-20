@@ -83,7 +83,6 @@ module.exports.index = async (req, res) => {
             _id: helperId,
             deleted: false
         }).select("helper_id fullName birthDate phone workingArea");
-        console.log(helperInfo)
 
         if (!helperInfo) {
             return res.status(404).json({ error: 'Helper not found' });

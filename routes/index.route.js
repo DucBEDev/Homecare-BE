@@ -15,6 +15,8 @@ const generalSettingRoutes = require("./generalSetting.route");
 const blogRoutes = require("./blog.route");
 const timeOffRoutes = require("./timeOff.route");
 const authRoutes = require("./auth.route");
+const policyRoutes = require("./policy.route");
+const questionRoutes = require("./question.route");
 
 module.exports = (app) => {
     const PATH_ADMIN = systemConfig.prefixAdmin;
@@ -32,4 +34,6 @@ module.exports = (app) => {
     app.use(PATH_ADMIN + '/blogs', blogRoutes);
     app.use(PATH_ADMIN + '/timeOffs', timeOffRoutes);
     app.use(PATH_ADMIN + '/auth', authRoutes);
+    app.use(PATH_ADMIN + '/policies', policyRoutes);
+    app.use(PATH_ADMIN + '/questions', questionRoutes);
 }
