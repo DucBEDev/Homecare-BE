@@ -16,6 +16,7 @@ router.patch('/detail/assignSubRequest/:requestDetailId', controller.assignSubRe
 router.patch('/detail/cancel/:requestDetailId', controller.cancel);
 router.patch('/detail/changeTime/:requestDetailId', controller.changeTime);
 router.patch('/updateRequestDone/:requestId', controller.updateRequestDonePatch);
+router.patch('/updateRequestWaitPayment/:requestId', controller.updateRequestWaitPaymentPatch);
 router.patch('/updateRequestDetailDone/:requestDetailId', controller.updateRequestDetailDonePatch);
 router.get('/updateRequestDetailDone/:requestDetailId', controller.updateRequestDetailDone);
 

@@ -40,7 +40,18 @@ module.exports.login = async (req, res) => {
     }
 }
 
-// [GET] /admin/auth/verify
+
+
+// [GET] /admin/auth/logout
+module.exports.logout = async (req, res) => {
+    try {
+        res.clearCookie('token');
+        
+        res.status(200).json({ message: "Logout successful" });
+     } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}// [GET] /admin/auth/verify
 module.exports.verify = async (req, res) => {
     try {
         const token = req.cookies.token;
@@ -49,17 +60,6 @@ module.exports.verify = async (req, res) => {
         if (res) {
             res.status(200).json({ message: "Login successful" });
         }
-     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [GET] /admin/auth/logout
-module.exports.logout = async (req, res) => {
-    try {
-        res.clearCookie('token');
-        
-        res.status(200).json({ message: "Logout successful" });
      } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }

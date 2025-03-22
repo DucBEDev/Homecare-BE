@@ -642,3 +642,38 @@ module.exports.history = async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
 }
+
+// [PATCH] /admin/requests/updateRequestWaitPayment/:requestId
+module.exports.updateRequestWaitPaymentPatch = async (req, res) => {
+    try {
+        const id = req.params.requestId;
+        const scheduleIds = (await Request.findOne({ _id: id }).select("scheduleIds")).scheduleIds;
+        let isFinished = true;
+
+        for (let i = 0; i < scheduleIds.length; i++) {
+            const detail = await RequestDetail.findOne({ 
+                _id: scheduleIds[i],
+                status: "done" 
+            });
+            
+            if (detail == null) {
+                isFinished = false;
+                break;
+            }
+        }
+
+        if (isFinished == true) {
+            await Request.updateOne(
+                { _id: id },
+                { 
+                    status: "waitPayment"
+                }
+            );
+            return res.json({ success: true });
+        }
+        
+        res.json({ success: false }); 
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
