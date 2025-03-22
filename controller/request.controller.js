@@ -55,7 +55,7 @@ module.exports.index = async (req, res) => {
             ...(status === 'history' 
                 ? { status: { $in: ['done', 'cancelled'] } } 
                 : { status: { $nin: ['done', 'cancelled'] } })
-        });
+        }).sort("orderDate: -1");
 
 
         records.forEach((request) => {
