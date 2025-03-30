@@ -25,16 +25,9 @@ async function calculateCost(startTime, endTime, coefficient_service, coefficien
     const OTStartTime = officeStartTime - startTime.getUTCHours() >= 0 ? officeStartTime - startTime.getUTCHours() : 0;
     const OTEndTime = endTime.getUTCHours() - officeEndTime >= 0 ? endTime.getUTCHours() - officeStartTime : 0;
     const OTTotalHour = OTStartTime + OTEndTime;
-    
-    console.log("other: " + coefficient_other)
 
-    // const baseCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * (hoursDiff - OTTotalHour);
-    // const OTCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * coefficient_OT * OTTotalHour;
     const totalCost = generalSetting.baseSalary * coefficient_service * coefficient_helper * ((coefficient_OT * OTTotalHour) + (coefficient_other * (hoursDiff - OTTotalHour)));
-    console.log(generalSetting.baseSalary * coefficient_service * coefficient_helper)
-    console.log((coefficient_OT * OTTotalHour))
-    console.log((coefficient_other * (hoursDiff - OTTotalHour)))
-    console.log(totalCost)
+
     return totalCost;
 }
 
@@ -196,6 +189,7 @@ module.exports.createPost = async (req, res) => {
             curr = curr.add(1, 'days');
             scheduleIds.push(requestDetail.id);
         }
+        
         req.body.scheduleIds = scheduleIds;
         const request = new Request(req.body);
         await request.save();
@@ -433,10 +427,6 @@ module.exports.assignSubRequest = async (req, res) => {
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
 
-        console.log("other in assign api:" + coefficient_other)
-        console.log("OT in assign api:" + coefficient_OT)
-        console.log("service in assign api:" + coefficient_service)
-
         await RequestDetail.updateOne(
             { _id: requestDetailId },
             { 
@@ -476,11 +466,6 @@ module.exports.assignFullRequest = async (req, res) => {
         const coefficient_other = req.body.coefficient_other;
         const coefficient_service = req.body.coefficient_service;
         const scheduleIds = req.body.scheduleIds;
-
-        console.log("other in full assign api:" + coefficient_other)
-        console.log("OT in full assign api:" + coefficient_OT)
-        console.log("service in full assign api:" + coefficient_service)
-
 
         for (const scheduleId of scheduleIds) {
             const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
@@ -556,7 +541,7 @@ module.exports.changeTime = async (req, res) => {
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
-        console.log(req.body)
+
         await RequestDetail.updateOne(
             { _id: id },
             { 
@@ -565,6 +550,13 @@ module.exports.changeTime = async (req, res) => {
                 helper_cost: totalCost    
             }
         );
+
+        const updateRequestCost = req.body.updatedCost;
+        const request = await Request.findOne({ "scheduleIds": id });
+        await Request.updateOne(
+            { _id: request.id },
+            { totalCost: updateRequestCost }
+        )
 
         res.json({ success: true });
     } catch (error) {
