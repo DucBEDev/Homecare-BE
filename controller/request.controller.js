@@ -444,13 +444,17 @@ module.exports.assignSubRequest = async (req, res) => {
         if (parentRequest) {
             await Request.updateOne(
                 { _id: parentRequest._id },
-                { status: "assigned" }
+                { 
+                    status: "assigned",
+                    profit: (parentRequest.profit == 0 ? parentRequest.totalCost : parentRequest.profit) - totalCost
+                }
             );
         }
 
         res.json({ 
             success: true,
-            totalCost: totalCost 
+            totalCost: totalCost, 
+            profit: profit
         });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
@@ -469,9 +473,12 @@ module.exports.assignFullRequest = async (req, res) => {
         const coefficient_service = req.body.coefficient_service;
         const scheduleIds = req.body.scheduleIds;
         let helperCostList = {};
+        let helperTotalCost = 0;
         
         for (const scheduleId of scheduleIds) {
             const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
+            helperTotalCost += totalCost;
+
             await RequestDetail.updateOne(
                 { _id: scheduleId },
                 { 
@@ -483,7 +490,7 @@ module.exports.assignFullRequest = async (req, res) => {
 
             helperCostList[scheduleId] = totalCost;
         }
-        console.log(helperCostList);
+        
 
         const parentRequest = await Request.findOne({ 
             scheduleIds: { $in: scheduleIds },
@@ -493,7 +500,10 @@ module.exports.assignFullRequest = async (req, res) => {
         if (parentRequest) {
             await Request.updateOne(
                 { _id: parentRequest._id },
-                { status: "assigned" }
+                { 
+                    status: "assigned",
+                    profit: parentRequest.totalCost - helperTotalCost
+                }
             );
         }
 
