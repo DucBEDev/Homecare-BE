@@ -1,5 +1,5 @@
 // Models
-const Question = require("../models/Question.model");
+const Question = require("../models/question.model");
 
 // [GET] /admin/questions
 module.exports.index = async (req, res) => {

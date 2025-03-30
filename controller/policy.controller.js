@@ -1,5 +1,5 @@
 // Models
-const Policy = require("../models/Policy.model");
+const Policy = require("../models/policy.model");
 
 // [GET] /admin/policies
 module.exports.index = async (req, res) => {
