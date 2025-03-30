@@ -20,23 +20,21 @@ async function calculateCost(startTime, endTime, coefficient_service, coefficien
     const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime baseSalary");
 
     const hoursDiff = Math.ceil(endTime.getUTCHours() - startTime.getUTCHours());
-    const officeStartTime = generalSetting.officeStartTime / 60;
-    const officeEndTime = generalSetting.officeEndTime / 60;
-    const OTStartTime = Math.ceil(officeStartTime - startTime.getUTCHours());
-    const OTEndTime = Math.ceil(officeEndTime - endTime.getUTCHours());
-    let OTTotalHour = 0;
+    const officeStartTime = moment(generalSetting.officeStartTime, "HH:mm").hours();
+    const officeEndTime = moment(generalSetting.officeEndTime, "HH:mm").hours();
+    const OTStartTime = officeStartTime - startTime.getUTCHours() >= 0 ? officeStartTime - startTime.getUTCHours() : 0;
+    const OTEndTime = endTime.getUTCHours() - officeEndTime >= 0 ? endTime.getUTCHours() - officeStartTime : 0;
+    const OTTotalHour = OTStartTime + OTEndTime;
     
-    if (OTStartTime > 0) {
-        OTTotalHour += OTStartTime;
-    }
-    if (OTEndTime < 0) {
-        OTTotalHour += Math.abs(OTEndTime);
-    }
-    
+    console.log("other: " + coefficient_other)
+
     // const baseCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * (hoursDiff - OTTotalHour);
     // const OTCost = generalSetting.baseSalary * coefficient_helper * coefficient_other * coefficient_OT * OTTotalHour;
     const totalCost = generalSetting.baseSalary * coefficient_service * coefficient_helper * ((coefficient_OT * OTTotalHour) + (coefficient_other * (hoursDiff - OTTotalHour)));
-    
+    console.log(generalSetting.baseSalary * coefficient_service * coefficient_helper)
+    console.log((coefficient_OT * OTTotalHour))
+    console.log((coefficient_other * (hoursDiff - OTTotalHour)))
+    console.log(totalCost)
     return totalCost;
 }
 
@@ -151,8 +149,8 @@ module.exports.createPost = async (req, res) => {
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         
-        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
-        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         
         req.body.totalCost = parseInt(req.body.totalCost);
         
@@ -305,11 +303,11 @@ module.exports.editPatch = async (req, res) => {
     try {
         const serviceTitle = req.body.serviceTitle;
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
-        const coefficient_service = parseFloat(req.body.coefficient_service);
-        const coefficient_other = parseFloat(req.body.coefficient_other);
-        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
-        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
-        
+        const coefficient_service = parseFloat(req.body.coefficientService);
+        const coefficient_other = parseFloat(req.body.coefficientOther);
+        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+
         req.body.totalCost = parseInt(req.body.totalCost);
         
         let service = {
@@ -334,7 +332,7 @@ module.exports.editPatch = async (req, res) => {
             ward: req.body.ward
         }
         req.body.location = location;
-        
+
         // Delete old scheduleIds record
         const scheduleListDetail = await Request.findOne({
             _id: req.params.id,
@@ -362,12 +360,12 @@ module.exports.editPatch = async (req, res) => {
             scheduleIds.push(requestDetail.id);
         }
         req.body.scheduleIds = scheduleIds;
-
+        
         await Request.updateOne(
             { _id: req.params.id },
             req.body
         );
-
+        
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
@@ -393,7 +391,9 @@ module.exports.detail = async (req, res) => {
         ).select("coefficientList");
         
         for (const id of request.scheduleIds) {
-            let record = await RequestDetail.findOne({ _id: id });
+            let record = await RequestDetail.findOne({ 
+                _id: id
+            });
             
             record = {
                 ...record.toObject(),
@@ -425,14 +425,18 @@ module.exports.assignSubRequest = async (req, res) => {
     try {
         const requestDetailId = req.params.requestDetailId;
         const helper_id = req.body.helper_id;
-        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         const helper_baseFactor = parseFloat(req.body.helper_baseFactor);
         const coefficient_OT = parseFloat(req.body.coefficient_ot);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
-        
+
+        console.log("other in assign api:" + coefficient_other)
+        console.log("OT in assign api:" + coefficient_OT)
+        console.log("service in assign api:" + coefficient_service)
+
         await RequestDetail.updateOne(
             { _id: requestDetailId },
             { 
@@ -451,7 +455,7 @@ module.exports.assignSubRequest = async (req, res) => {
         if (parentRequest) {
             await Request.updateOne(
                 { _id: parentRequest._id },
-                { status: "processing" }
+                { status: "assigned" }
             );
         }
 
@@ -465,13 +469,18 @@ module.exports.assignSubRequest = async (req, res) => {
 module.exports.assignFullRequest = async (req, res) => {
     try {
         const helper_id = req.body.helper_id;
-        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         const helper_baseFactor = req.body.baseFactor;
         const coefficient_OT = req.body.coefficient_OT;
         const coefficient_other = req.body.coefficient_other;
         const coefficient_service = req.body.coefficient_service;
         const scheduleIds = req.body.scheduleIds;
+
+        console.log("other in full assign api:" + coefficient_other)
+        console.log("OT in full assign api:" + coefficient_OT)
+        console.log("service in full assign api:" + coefficient_service)
+
 
         for (const scheduleId of scheduleIds) {
             const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
@@ -493,7 +502,7 @@ module.exports.assignFullRequest = async (req, res) => {
         if (parentRequest) {
             await Request.updateOne(
                 { _id: parentRequest._id },
-                { status: "processing" }
+                { status: "assigned" }
             );
         }
 
@@ -517,6 +526,19 @@ module.exports.cancel = async (req, res) => {
             }
         );
 
+        const request = (await Request.findOne({ "scheduleIds": id }).select("scheduleIds"));
+        const isRemainingDetail = await RequestDetail.findOne({ 
+            _id: { $in: request.scheduleIds },
+            status: { $ne: "cancelled" }
+        });
+        
+        if (isRemainingDetail == null) {
+            await Request.updateOne(
+                { _id: request.id },
+                { status: "cancelled" }
+            )
+        }
+
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
@@ -527,14 +549,14 @@ module.exports.cancel = async (req, res) => {
 module.exports.changeTime = async (req, res) => {
     try {
         const id = req.params.requestDetailId;
-        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         const helper_baseFactor = parseFloat(req.body.helper_baseFactor);
         const coefficient_OT = parseFloat(req.body.coefficient_OT);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
-
+        console.log(req.body)
         await RequestDetail.updateOne(
             { _id: id },
             { 
@@ -649,17 +671,14 @@ module.exports.updateRequestWaitPaymentPatch = async (req, res) => {
         const id = req.params.requestId;
         const scheduleIds = (await Request.findOne({ _id: id }).select("scheduleIds")).scheduleIds;
         let isFinished = true;
-
-        for (let i = 0; i < scheduleIds.length; i++) {
-            const detail = await RequestDetail.findOne({ 
-                _id: scheduleIds[i],
-                status: "done" 
-            });
-            
-            if (detail == null) {
-                isFinished = false;
-                break;
-            }
+        
+        const detailDone = await RequestDetail.findOne({ 
+            _id: { $in: scheduleIds },
+            status: { $ne: "done" } 
+        });
+        
+        if (detailDone != null) {
+            isFinished = false;
         }
 
         if (isFinished == true) {

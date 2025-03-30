@@ -21,7 +21,7 @@ const requestSchema = new mongoose.Schema({
     service: {
         title: String, // Tên dịch vụ
         coefficient_service: Number, // Hệ số dịch vụ,
-        coefficient_other: Number, // Hệ số khác (ngoài giờ, cuối tuần, ...),
+        coefficient_other: Number, // Hệ số khác (cuối tuần, lễ,...),
         cost: Number // Số tiền phải trả cho dịch vụ đó trên 1 giờ
     },
     totalCost: Number,
