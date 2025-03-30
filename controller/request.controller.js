@@ -436,7 +436,6 @@ module.exports.assignSubRequest = async (req, res) => {
             }
         );
 
-        const requestDetail = await RequestDetail.findOne({ _id: requestDetailId });
         const parentRequest = await Request.findOne({ 
             scheduleIds: requestDetailId,
             status: { $nin: ["done", "cancelled"] } 
@@ -449,7 +448,10 @@ module.exports.assignSubRequest = async (req, res) => {
             );
         }
 
-        res.json({ success: true });
+        res.json({ 
+            success: true,
+            totalCost: totalCost 
+        });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
@@ -462,11 +464,12 @@ module.exports.assignFullRequest = async (req, res) => {
         const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         const helper_baseFactor = req.body.baseFactor;
-        const coefficient_OT = req.body.coefficient_OT;
+        const coefficient_OT = req.body.coefficient_ot;
         const coefficient_other = req.body.coefficient_other;
         const coefficient_service = req.body.coefficient_service;
         const scheduleIds = req.body.scheduleIds;
-
+        let helperCostList = {};
+        
         for (const scheduleId of scheduleIds) {
             const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
             await RequestDetail.updateOne(
@@ -477,7 +480,10 @@ module.exports.assignFullRequest = async (req, res) => {
                     status: "assigned"
                 }
             );
+
+            helperCostList[scheduleId] = totalCost;
         }
+        console.log(helperCostList);
 
         const parentRequest = await Request.findOne({ 
             scheduleIds: { $in: scheduleIds },
@@ -491,7 +497,10 @@ module.exports.assignFullRequest = async (req, res) => {
             );
         }
 
-        res.json({ success: true });
+        res.json({ 
+            success: true,
+            helperCostList: helperCostList
+        });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
@@ -609,15 +618,13 @@ module.exports.updateRequestDonePatch = async (req, res) => {
         const id = req.params.requestId;
         const request = await Request.findOne({ _id: id }).select("scheduleIds startTime endTime customerInfo service totalCost");
 
-        for (const id of request.scheduleIds) {
-            const isDone = await RequestDetail.findOne({
-                _id: id,
-                status: { $in: ["notDone", "assigned"] }
-            });
-            
-            if (isDone != null) {
-                return res.status(400).json({ error: 'done request error' });
-            }
+        const isDone = await RequestDetail.findOne({
+            _id: request.scheduleIds,
+            status: { $nin: "done" }
+        });
+        
+        if (isDone != null) {
+            return res.status(400).json({ error: 'done request error' });
         }
 
         const requestDetail = await RequestDetail.find({ _id: { $in: request.scheduleIds } });
@@ -657,33 +664,17 @@ module.exports.history = async (req, res) => {
     }
 }
 
-// [PATCH] /admin/requests/updateRequestWaitPayment/:requestId
+// [PATCH] /admin/requests/updateDetailWaitPayment/:requestDetailId
 module.exports.updateRequestWaitPaymentPatch = async (req, res) => {
     try {
-        const id = req.params.requestId;
-        const scheduleIds = (await Request.findOne({ _id: id }).select("scheduleIds")).scheduleIds;
-        let isFinished = true;
-        
-        const detailDone = await RequestDetail.findOne({ 
-            _id: { $in: scheduleIds },
-            status: { $ne: "done" } 
-        });
-        
-        if (detailDone != null) {
-            isFinished = false;
-        }
-
-        if (isFinished == true) {
-            await Request.updateOne(
-                { _id: id },
-                { 
-                    status: "waitPayment"
-                }
-            );
-            return res.json({ success: true });
-        }
-        
-        res.json({ success: false }); 
+        const id = req.params.requestDetailId;
+        await RequestDetail.updateOne(
+            { _id: id },
+            { 
+                status: "waitPayment"
+            }
+        );
+        return res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
