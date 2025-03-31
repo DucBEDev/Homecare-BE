@@ -19,5 +19,6 @@ router.patch('/updateRequestDone/:requestId', controller.updateRequestDonePatch)
 router.patch('/updateDetailWaitPayment/:requestDetailId', controller.updateRequestWaitPaymentPatch);
 router.patch('/updateRequestDetailDone/:requestDetailId', controller.updateRequestDetailDonePatch);
 router.get('/updateRequestDetailDone/:requestDetailId', controller.updateRequestDetailDone);
+router.get('/updateRequestProcessing/:requestDetailId', controller.updateRequestProcessing);
 
 module.exports = router;

@@ -435,18 +435,18 @@ module.exports.assignSubRequest = async (req, res) => {
                 status: "assigned"
             }
         );
-
         const parentRequest = await Request.findOne({ 
             scheduleIds: requestDetailId,
             status: { $nin: ["done", "cancelled"] } 
         });
+        const profit = (parentRequest.profit == 0 ? parentRequest.totalCost : parentRequest.profit) - totalCost;
         
         if (parentRequest) {
             await Request.updateOne(
                 { _id: parentRequest._id },
                 { 
                     status: "assigned",
-                    profit: (parentRequest.profit == 0 ? parentRequest.totalCost : parentRequest.profit) - totalCost
+                    profit: profit
                 }
             );
         }
@@ -682,6 +682,22 @@ module.exports.updateRequestWaitPaymentPatch = async (req, res) => {
             { _id: id },
             { 
                 status: "waitPayment"
+            }
+        );
+        return res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
+
+// [PATCH] /admin/requests/updateRequestProcessing/:requestDetailId
+module.exports.updateRequestProcessing = async (req, res) => {
+    try {
+        const id = req.params.requestDetailId;
+        await RequestDetail.updateOne(
+            { _id: id },
+            { 
+                status: "processing"
             }
         );
         return res.json({ success: true });
