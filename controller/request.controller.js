@@ -141,16 +141,19 @@ module.exports.createPost = async (req, res) => {
         const serviceBasePrice = parseInt(req.body.serviceBasePrice);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
+        const coefficient_ot = parseFloat(req.body.coefficient_ot);
         
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         
         req.body.totalCost = parseInt(req.body.totalCost);
+        // const detailTotalCost = parseInt(req.body.detailTotalCost);
         
         let service = {
             title: serviceTitle, 
             coefficient_service: coefficient_service,
             coefficient_other: coefficient_other,
+            coefficient_ot: coefficient_ot,
             cost: serviceBasePrice 
         };
         req.body.service = service;
@@ -171,22 +174,22 @@ module.exports.createPost = async (req, res) => {
         req.body.location = location;
 
         const scheduleIds = [];
-        let curr = moment(req.body.startTime);
-        const end = moment(req.body.endTime);
-        while (curr <= end) {
-            let objectDate = {
-                workingDate: curr.toDate(),
+        const requestDetailList = req.body.detailCost;
+
+        for (let i = 0; i < requestDetailList.length; i++) {
+            let objectData = {
+                workingDate: moment(requestDetailList[i].date).toDate(),
                 startTime: req.body.startTime,
                 endTime: req.body.endTime,
                 helper_id: "notAvailable",
                 status: "notDone",
-                helper_cost: 0
+                helper_cost: 0,
+                cost: parseFloat(requestDetailList[i].cost)
             };
 
-            const requestDetail = new RequestDetail(objectDate);
+            const requestDetail = new RequestDetail(objectData);
             await requestDetail.save();
             
-            curr = curr.add(1, 'days');
             scheduleIds.push(requestDetail.id);
         }
         
@@ -303,6 +306,7 @@ module.exports.editPatch = async (req, res) => {
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
 
         req.body.totalCost = parseInt(req.body.totalCost);
+        // const detailTotalCost = parseInt(req.body.detailTotalCost);
         
         let service = {
             title: serviceTitle, 
@@ -344,7 +348,8 @@ module.exports.editPatch = async (req, res) => {
                 endTime: req.body.endTime,
                 helper_id: "notAvailable",
                 status: "notDone",
-                helper_cost: 0
+                helper_cost: 0,
+                // totalCost: detailTotalCost
             };
 
             const requestDetail = new RequestDetail(objectDate);
@@ -425,21 +430,24 @@ module.exports.assignSubRequest = async (req, res) => {
         const coefficient_OT = parseFloat(req.body.coefficient_ot);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_service = parseFloat(req.body.coefficient_service);
-        const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
+        const oldHelperCost = parseFloat(req.body.helperCost);
+        const newHelperCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
 
+        
         await RequestDetail.updateOne(
             { _id: requestDetailId },
             { 
                 helper_id: helper_id,
-                helper_cost: totalCost,
+                helper_cost: newHelperCost,
                 status: "assigned"
             }
-        );
+        ); 
+
         const parentRequest = await Request.findOne({ 
             scheduleIds: requestDetailId,
             status: { $nin: ["done", "cancelled"] } 
         });
-        const profit = (parentRequest.profit == 0 ? parentRequest.totalCost : parentRequest.profit) - totalCost;
+        const profit = (parentRequest.profit == 0 ? parentRequest.totalCost : parentRequest.profit) + oldHelperCost - newHelperCost;
         
         if (parentRequest) {
             await Request.updateOne(
@@ -453,7 +461,7 @@ module.exports.assignSubRequest = async (req, res) => {
 
         res.json({ 
             success: true,
-            totalCost: totalCost, 
+            totalCost: newHelperCost, 
             profit: profit
         });
     } catch (error) {
@@ -560,6 +568,8 @@ module.exports.changeTime = async (req, res) => {
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
+
+        console.log(req.body)
 
         await RequestDetail.updateOne(
             { _id: id },
@@ -694,6 +704,7 @@ module.exports.updateRequestWaitPaymentPatch = async (req, res) => {
 module.exports.updateRequestProcessing = async (req, res) => {
     try {
         const id = req.params.requestDetailId;
+
         await RequestDetail.updateOne(
             { _id: id },
             { 

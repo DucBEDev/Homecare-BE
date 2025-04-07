@@ -92,11 +92,7 @@ module.exports.index = async (req, res) => {
         const endOfMonth = moment().endOf('month').endOf('day');
 
         const timeOffs = await TimeOff.find({
-            helper_id: helperId,
-            dateOff: {
-                $gte: startOfMonth.toDate(),
-                $lte: endOfMonth.toDate()
-            }
+            helper_id: helperId
         }).select("dateOff startTime endTime status");
 
         const formattedTimeOffs = timeOffs.map(timeOff => ({
