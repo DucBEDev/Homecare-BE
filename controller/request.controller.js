@@ -304,6 +304,8 @@ module.exports.editPatch = async (req, res) => {
         const coefficient_other = parseFloat(req.body.coefficientOther);
         req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
+        req.body.status = "notDone";
+        req.body.profit = 0;
 
         req.body.totalCost = parseInt(req.body.totalCost);
         // const detailTotalCost = parseInt(req.body.detailTotalCost);
@@ -339,23 +341,22 @@ module.exports.editPatch = async (req, res) => {
         await RequestDetail.deleteMany({ _id: { $in: scheduleListDetail.scheduleIds } });
 
         const scheduleIds = [];
-        let curr = moment(req.body.startTime);
-        const end = moment(req.body.endTime);
-        while (curr <= end) {
-            let objectDate = {
-                workingDate: curr.toDate(),
+        const requestDetailList = req.body.detailCost;
+
+        for (let i = 0; i < requestDetailList.length; i++) {
+            let objectData = {
+                workingDate: moment(requestDetailList[i].date).toDate(),
                 startTime: req.body.startTime,
                 endTime: req.body.endTime,
                 helper_id: "notAvailable",
                 status: "notDone",
                 helper_cost: 0,
-                // totalCost: detailTotalCost
+                cost: parseFloat(requestDetailList[i].cost)
             };
 
-            const requestDetail = new RequestDetail(objectDate);
+            const requestDetail = new RequestDetail(objectData);
             await requestDetail.save();
             
-            curr = curr.add(1, 'days');
             scheduleIds.push(requestDetail.id);
         }
         req.body.scheduleIds = scheduleIds;

@@ -88,9 +88,6 @@ module.exports.index = async (req, res) => {
             return res.status(404).json({ error: 'Helper not found' });
         }
 
-        const startOfMonth = moment().startOf('month').startOf('day');
-        const endOfMonth = moment().endOf('month').endOf('day');
-
         const timeOffs = await TimeOff.find({
             helper_id: helperId
         }).select("dateOff startTime endTime status");
