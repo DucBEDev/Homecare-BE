@@ -1,66 +1,118 @@
 const Staff = require("../models/staff.model");
-const Role = require("../models/role.model");
 
 const md5 = require("md5");
 const jwt = require("jsonwebtoken");
 
 // [POST] /admin/auth/login
 module.exports.login = async (req, res) => {
+    const { hmrId, password } = req.body;
+
     try {
-        const phone = req.body.phone;
-        const password = md5(req.body.password);
-        const data = await Staff.findOne(
+        const staffData = await Staff.aggregate([
             {
-                phone: phone,
-                password: password
-            }
+                $match: {
+                    staff_id: hmrId,
+                    password: md5(password),
+                    status: "active"
+                }
+            },
+            {
+                $addFields: {
+                    roleIdObj: { $toObjectId: "$role_id" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "roles",
+                    localField: "roleIdObj",
+                    foreignField: "_id",
+                    as: "roleData"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$roleData",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    staff_id: 1,
+                    fullName: 1,
+                    role_id: 1,
+                    roleTitle: "$roleData.title",
+                    rolePermissions: "$roleData.permissions"
+                }
+            },
+            { $limit: 1 }
+        ]);
+
+        if (!staffData.length) {
+            return res.status(401).json({
+                message: "UserId or password is not correct!"
+            });
+        }
+
+        const user = staffData[0];
+
+        const token = jwt.sign(
+            {
+                staff_id: user.staff_id,
+                fullName: user.fullName,
+                role: user.roleTitle,
+                permissionList: user.rolePermissions
+            },
+            process.env.SECRET_KEY,
+            { expiresIn: "1h" }
         );
 
-        if (data == null) {
-            res.status(401).json({ error: 'Invalid phone or password' });
-            return;
-        }
-        if (data.status != "active") {
-            res.status(404).json({ error: 'Account has been blocked' });
-            return;
-        }
-
-        const token = jwt.sign({ _id: data._id }, "login");
-        res.cookie("token", token, { maxAge: 24 * 60 * 60 * 1000 , httpOnly: true });
-
-        const role = await Role.findOne({ _id: data.role_id }).select("permissions");
-    
-        res.json({
-            message: "Login successful",
-            token: token,
-            role: role
+        res.cookie("admin_token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "none",
+            maxAge: 60 * 60 * 1000
         });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+
+        return res.status(200).json({
+            success: true,
+            fullName: user.fullName,
+            role: user.roleTitle,
+            permissionList: user.rolePermissions
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal server error" });
     }
-}
-
-
+};
 
 // [GET] /admin/auth/logout
 module.exports.logout = async (req, res) => {
     try {
-        res.clearCookie('token');
-        
-        res.status(200).json({ message: "Logout successful" });
+        res.clearCookie('admin_token', {
+            httpOnly: true,
+            sameSite: 'none',
+            secure: process.env.NODE_ENV === 'production'
+        });
+    
+        return res.status(200).json({
+            message: 'Logout successful'
+        });
      } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        console.error("Logout error:", error);
+        return res.status(500).json({ message: "Server error!" });
     }
-}// [GET] /admin/auth/verify
-module.exports.verify = async (req, res) => {
-    try {
-        const token = req.cookies.token;
-        const res = jwt.verify(token, "login");
+}
 
-        if (res) {
-            res.status(200).json({ message: "Login successful" });
-        }
+// [GET] /admin/auth/validate
+module.exports.validate = async (req, res) => {
+    try {
+        return res.status(200).json({
+            message: 'Authenticated',
+            user: req.user
+        })
      } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        console.error("Login error:", error);
+        return res.status(500).json({ message: "Server error!" });
     }
 }
