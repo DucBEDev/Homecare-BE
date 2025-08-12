@@ -39,37 +39,92 @@ function convertMinuteToHour(minute) {
 // [GET] /admin/requests
 module.exports.index = async (req, res) => {
     try {
-        const status = req.query.status;
+        const { status = "all", search, fromDate, toDate, page = 1, limit = 10 } = req.query;
 
-        const records = await Request.find({
-            deleted: false,
-            ...(status === 'history' 
-                ? { status: { $in: ['done', 'cancelled'] } } 
-                : { status: { $nin: ['done', 'cancelled'] } })
-        }).sort("orderDate: -1");
+        const matchStage = {};
 
+        if (status !== "all") {
+            matchStage.status = status;
+        }
 
-        records.forEach((request) => {
-            // Auto update status in real-time
-            const startTime = moment(request.startTime).utc();
-            const endTime = moment(request.endTime).utc();
-            const now = moment().utc();
+        if (search) {
+            matchStage.ordId = { $regex: search, $options: "i" };
+        }
 
-            if (now.isBetween(startTime, endTime)) {
-                request.status = "unconfirmed";
-            } 
-            else if (now.isAfter(endTime)) {
-                request.status = "done";
-            } 
-            // End Auto update status in real-time
+        if (fromDate && toDate) {
+            matchStage.ordDate = {
+                $gte: new Date(fromDate),
+                $lte: new Date(toDate)
+            };
+        }
+
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const pipeline = [
+            { $match: matchStage },
+
+            {
+                $lookup: {
+                    from: "customers",
+                    localField: "cusId",
+                    foreignField: "cusId",
+                    as: "customerData"
+                }
+            },
+            { $unwind: { path: "$customerData", preserveNullAndEmptyArrays: true } },
+
+            {
+                $lookup: {
+                    from: "services",
+                    localField: "serviceId",
+                    foreignField: "serviceId",
+                    as: "serviceData"
+                }
+            },
+            { $unwind: { path: "$serviceData", preserveNullAndEmptyArrays: true } },
+
+            {
+                $lookup: {
+                    from: "orderdetails",
+                    localField: "ordId",
+                    foreignField: "ordId",
+                    as: "orderDetails"
+                }
+            },
+            {
+                $addFields: {
+                    cost: { $sum: "$orderDetails.ordDetailCost" }
+                }
+            },
+
+            {
+                $project: {
+                    _id: 0,
+                    orderId: "$ordId",
+                    orderDate: "$ordDate",
+                    status: 1,
+                    phoneNumberCustomers: "$customerData.phone",
+                    serviceName: "$serviceData.title",
+                    cost: 1
+                }
+            },
+
+            { $sort: { orderDate: -1 } },
+            { $skip: skip },
+            { $limit: Number(limit) }
+        ];
+
+        const data = await Order.aggregate(pipeline);
+        const total = await Order.countDocuments(matchStage);
+
+        res.json({
+            total,
+            data
         });
 
-        res.json({ 
-            success: true,
-            requestList: records
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
