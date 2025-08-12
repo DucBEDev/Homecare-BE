@@ -483,24 +483,32 @@ module.exports.assignFullRequest = async (req, res) => {
         const scheduleIds = req.body.scheduleIds;
         let helperCostList = {};
         let helperTotalCost = 0;
-        
+
         for (const scheduleId of scheduleIds) {
-            const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
-            helperTotalCost += totalCost;
+            const findDetail = await RequestDetail.findOne({ _id: scheduleId });
 
-            await RequestDetail.updateOne(
-                { _id: scheduleId },
-                { 
-                    helper_id: helper_id,
-                    helper_cost: totalCost,
-                    status: "assigned"
-                }
-            );
+            if (findDetail.status == "notDone" || findDetail.status == "assigned") {
+                const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
+                helperTotalCost += totalCost;
 
-            helperCostList[scheduleId] = totalCost;
+                await RequestDetail.updateOne(
+                    { 
+                        _id: scheduleId
+                    },
+                    { 
+                        helper_id: helper_id,
+                        helper_cost: totalCost,
+                        status: "assigned"
+                    }
+                );
+                helperCostList[scheduleId] = totalCost;
+            }
+            else {
+                helperTotalCost += findDetail.helper_cost;
+                helperCostList[scheduleId] = findDetail.helper_cost;
+            }
         }
         
-
         const parentRequest = await Request.findOne({ 
             scheduleIds: { $in: scheduleIds },
             status: { $nin: ["done", "cancelled"] } 
@@ -530,6 +538,8 @@ module.exports.cancel = async (req, res) => {
     try {
         const id = req.params.requestDetailId;
 
+        const oldDetail = await RequestDetail.findOne({ _id: id }).select("cost helper_cost");
+        
         await RequestDetail.updateOne(
             { _id: id },
             { 
@@ -538,19 +548,27 @@ module.exports.cancel = async (req, res) => {
                 helper_id: "notAvailable"
             }
         );
+        
+        const request = (await Request.findOne({ "scheduleIds": id }).select("scheduleIds totalCost profit"));
+        const newRequestCost = request.totalCost - oldDetail.cost;
+        const newProfit = newRequestCost - (request.totalCost - request.profit - oldDetail.helper_cost);
+        const objectUpdate = {
+            totalCost: newRequestCost,
+            profit: newProfit
+        }
 
-        const request = (await Request.findOne({ "scheduleIds": id }).select("scheduleIds"));
         const isRemainingDetail = await RequestDetail.findOne({ 
             _id: { $in: request.scheduleIds },
             status: { $ne: "cancelled" }
         });
-        
         if (isRemainingDetail == null) {
-            await Request.updateOne(
-                { _id: request.id },
-                { status: "cancelled" }
-            )
+            objectUpdate.status = "cancelled";
         }
+
+        await Request.updateOne(
+            { _id: request.id },
+            objectUpdate
+        )
 
         res.json({ success: true });
     } catch (error) {
@@ -568,24 +586,31 @@ module.exports.changeTime = async (req, res) => {
         const coefficient_OT = parseFloat(req.body.coefficient_OT);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_service = parseFloat(req.body.coefficient_service);
-        const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
-
-        console.log(req.body)
+        const newDetailCost = parseFloat(req.body.totalCost);
+        const oldDetailRequest = await RequestDetail.findOne({ _id: id }).select("cost helper_cost");
+        const newHelperCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
 
         await RequestDetail.updateOne(
             { _id: id },
             { 
                 startTime: startTime,
                 endTime: endTime,
-                helper_cost: totalCost    
+                helper_cost: newHelperCost,
+                cost: newDetailCost    
             }
         );
 
-        const updateRequestCost = req.body.updatedCost;
         const request = await Request.findOne({ "scheduleIds": id });
+        const updateRequestCost = request.totalCost - oldDetailRequest.cost + newDetailCost;
+        let newProfit = 0;
+        if (request.profit != 0) {
+            const oldHelperCost = request.totalCost - request.profit;
+            newProfit = updateRequestCost - (oldHelperCost - oldDetailRequest.helper_cost + newHelperCost)
+        }
+
         await Request.updateOne(
             { _id: request.id },
-            { totalCost: updateRequestCost }
+            { totalCost: updateRequestCost, profit: newProfit }
         )
 
         res.json({ success: true });
