@@ -15,6 +15,9 @@ const generalSetting_id = "generalSetting";
 const moment = require("moment");
 const md5 = require('md5');
 
+// Helpers
+const { convertDate } = require("../helpers/convertDate.helper");
+
 // Function 
 async function calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, coefficient_helper) {
     const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime baseSalary");
@@ -47,14 +50,39 @@ module.exports.index = async (req, res) => {
             matchStage.status = status;
         }
 
-        if (search) {
-            matchStage.ordId = { $regex: search, $options: "i" };
+        if (fromDate && toDate) {
+            const from = convertDate(fromDate);
+            const to = convertDate(toDate);
+
+            to.setHours(23, 59, 59, 999);
+            matchStage.orderDate = { $gte: from, $lte: to };
         }
 
-        if (fromDate && toDate) {
-            matchStage.ordDate = {
-                $gte: new Date(fromDate),
-                $lte: new Date(toDate)
+        if (search) {
+            matchStage.$expr = {
+                $or: [
+                    {
+                        $regexMatch: {
+                            input: { $toString: "$_id" },
+                            regex: search,
+                            options: "i"
+                        }
+                    },
+                    {
+                        $regexMatch: {
+                            input: "$customerInfo.phone",
+                            regex: search,
+                            options: "i"
+                        }
+                    },
+                    {
+                        $regexMatch: {
+                            input: "$customerInfo.fullName",
+                            regex: search,
+                            options: "i"
+                        }
+                    }
+                ]
             };
         }
 
@@ -64,67 +92,89 @@ module.exports.index = async (req, res) => {
             { $match: matchStage },
 
             {
-                $lookup: {
-                    from: "customers",
-                    localField: "cusId",
-                    foreignField: "cusId",
-                    as: "customerData"
+                $addFields: {
+                    scheduleIdsObj: {
+                        $cond: [
+                            { $isArray: "$scheduleIds" },
+                            {
+                                $map: {
+                                    input: "$scheduleIds",
+                                    as: "id",
+                                    in: {
+                                        $convert: {
+                                            input: "$$id",
+                                            to: "objectId",
+                                            onError: "$$id",
+                                            onNull: "$$id"
+                                        }
+                                    }
+                                }
+                            },
+                            []
+                        ]
+                    }
                 }
             },
-            { $unwind: { path: "$customerData", preserveNullAndEmptyArrays: true } },
 
             {
                 $lookup: {
-                    from: "services",
-                    localField: "serviceId",
-                    foreignField: "serviceId",
-                    as: "serviceData"
+                    from: "requestDetails",
+                    localField: "scheduleIdsObj",
+                    foreignField: "_id",
+                    as: "requestDetails"
                 }
             },
-            { $unwind: { path: "$serviceData", preserveNullAndEmptyArrays: true } },
 
-            {
-                $lookup: {
-                    from: "orderdetails",
-                    localField: "ordId",
-                    foreignField: "ordId",
-                    as: "orderDetails"
-                }
-            },
             {
                 $addFields: {
-                    cost: { $sum: "$orderDetails.ordDetailCost" }
-                }
-            },
-
-            {
-                $project: {
-                    _id: 0,
-                    orderId: "$ordId",
-                    orderDate: "$ordDate",
-                    status: 1,
-                    phoneNumberCustomers: "$customerData.phone",
-                    serviceName: "$serviceData.title",
-                    cost: 1
+                    cost: {
+                        $sum: {
+                            $map: {
+                                input: "$requestDetails",
+                                as: "d",
+                                in: { $ifNull: ["$$d.cost", 0] }
+                            }
+                        }
+                    }
                 }
             },
 
             { $sort: { orderDate: -1 } },
             { $skip: skip },
-            { $limit: Number(limit) }
+            { $limit: Number(limit) },
+
+            {
+                $project: {
+                    _id: 0,
+                    orderId: { $toString: "$_id" },
+                    orderDate: {
+                        $dateToString: {
+                            format: "%d/%m/%Y %H:%M:%S",
+                            date: "$orderDate",
+                            timezone: "Asia/Ho_Chi_Minh"
+                        }
+                    },
+                    status: 1,
+                    phoneNumberCustomers: "$customerInfo.phone",
+                    serviceCategory: "$service.title",
+                    cost: 1
+                }
+            }
         ];
 
-        const data = await Order.aggregate(pipeline);
-        const total = await Order.countDocuments(matchStage);
+        const data = await Request.aggregate(pipeline);
 
-        res.json({
-            total,
-            data
+        const totalAgg = await Request.aggregate([{ $match: matchStage }, { $count: "total" }]);
+        const total = totalAgg[0]?.total || 0;
+
+        return res.status(200).json({ 
+            success: true,
+            totalOrders: total, 
+            result: data 
         });
-
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("index error:", err);
+        return res.status(500).json({ message: "Internal server error" });
     }
 }
 

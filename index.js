@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: false }));
 // Config CORS to connect FE and BE
 const cors = require('cors');
 app.use(cors({
-    origin: ['https://admin.homekare.site', 'https://homecare-beta.vercel.app', 'http://localhost:3000'],
+    origin: ['https://admin.homekare.site', 'https://home-care-fe.vercel.app', 'http://localhost:3000'],
     credentials: true
 }));
 
