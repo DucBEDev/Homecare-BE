@@ -29,7 +29,7 @@ module.exports = (app) => {
     app.use(PATH_ADMIN + '/services', serviceRoutes);
     app.use(PATH_ADMIN + '/requests', requestRoutes);
     app.use(PATH_ADMIN + '/costFactors', costFactorTypeRoutes);
-    app.use(PATH_ADMIN + '/customers', customerRoutes);
+    app.use(PATH_ADMIN + '/customer', customerRoutes);
     app.use(PATH_ADMIN + '/generalSettings', generalSettingRoutes);
     app.use(PATH_ADMIN + '/blogs', blogRoutes);
     app.use(PATH_ADMIN + '/timeOffs', timeOffRoutes);
