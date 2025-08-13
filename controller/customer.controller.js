@@ -56,3 +56,21 @@ module.exports.requestHistoryList = async (req, res) => {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
 }
+
+// [GET] /admin/customers/checkExist/:cusPhone
+module.exports.checkCusExist = async (req, res) => {
+    try {
+        const { cusPhone } = req.params;
+
+        const cusData = await Customer.findOne({
+            phone: cusPhone
+        }).select('fullName phone addresses');
+
+        res.json({ 
+            success: true,
+            customer: cusData
+        })
+    } catch (error) {
+        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    }
+}
