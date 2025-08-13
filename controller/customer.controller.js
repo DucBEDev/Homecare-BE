@@ -1,6 +1,7 @@
 // Models
 const Customer = require("../models/customer.model");
 const Request = require("../models/request.model");
+const Discount = require("../models/discount.model");
 
 
 function calculateCustomerPoint(points) {
@@ -62,15 +63,36 @@ module.exports.checkCusExist = async (req, res) => {
     try {
         const { cusPhone } = req.params;
 
-        const cusData = await Customer.findOne({
+        const customer = await Customer.findOne({
             phone: cusPhone
         }).select('fullName phone addresses');
 
+        if (!customer) {
+            return res.status(401).json({ 
+                success: false, 
+                message: "Customer not found" 
+            });
+        }
+
+        const now = new Date();
+        const discounts = await Discount.find({
+            status: "active",
+            deleted: false,
+            applyStartDate: { $lte: now },
+            applyEndDate: { $gte: now }
+        }).select('title description rate applyStartDate applyEndDate');
+
         res.json({ 
             success: true,
-            customer: cusData
-        })
+            customer: {
+                cusName: customer.fullName,
+                phone: customer.phone,
+                addresses: customer.addresses
+            },
+            discounts
+        });
     } catch (error) {
+        console.error("checkCusExist error:", error);
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
-}
+};

@@ -7,7 +7,7 @@ const DiscountSchema = new mongoose.Schema({
     applyStartDate: Date,
     applyEndDate: Date,
     rate: Number,
-    status: Boolean,
+    status: String,
     deleted: {
         type: Boolean,
         default: false
