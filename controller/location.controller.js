@@ -35,19 +35,22 @@ module.exports.getProvinces = async (req, res) => {
 
             { $sort: search ? { isPrefix: -1, Name: 1 } : { Name: 1 } },
 
-            { $project: { _id: 1, Name: 1 } }
+            { $project: { provinceId: "$_id", provinceName: "$Name" } }
         ];
 
         const provinces = await Location.aggregate(pipeline);
 
-        res.json(provinces);
+        res.json({
+            success: true,
+            result: provinces
+        });
     } catch (err) {
         console.error("getProvinces error:", err);
         res.status(500).json({ message: "Internal server error" });
     }
 };
 
-// [GET] /admin/locations/:provinceId/districts
+// [GET] /admin/locations/district/:provinceId
 module.exports.getDistrictsByProvince = async (req, res) => {
     try {
         const { provinceId } = req.params;
@@ -56,7 +59,9 @@ module.exports.getDistrictsByProvince = async (req, res) => {
         // Lấy city và districts
         const province = await Location.findById(provinceId).select("Districts");
 
-        if (!province) return res.status(404).json({ message: "Province not found" });
+        if (!province) {
+            return res.status(404).json({ message: "Province not found" });
+        }
 
         let districts = province.Districts || [];
 
@@ -82,26 +87,31 @@ module.exports.getDistrictsByProvince = async (req, res) => {
             );
         }
 
-        res.json(districts.map(d => ({ Name: d.Name, _id: d._id })));
+        return res.status(200).json({
+            success: true,
+            result: districts.map(d => ({ districtName: d.Name, districtCode: d._id }))
+        });
     } catch (err) {
         console.error("getDistrictsByCity error:", err);
         res.status(500).json({ message: "Internal server error" });
     }
 };
 
-// [GET] /admin/locations/:provinceId/districts/:districtId/wards
+// [GET] /admin/locations/ward/:provinceId/:districtId
 module.exports.getWardsByDistrict = async (req, res) => {
     try {
         const { provinceId, districtId } = req.params;
         const { search } = req.query;
 
         const province = await Location.findById(provinceId).select("Districts");
-
-        if (!province) return res.status(404).json({ message: "Province not found" });
+        if (!province) {
+            return res.status(404).json({ message: "Province not found" })
+        }
 
         const district = province.Districts.find(d => d._id.toString() === districtId);
-
-        if (!district) return res.status(404).json({ message: "District not found" });
+        if (!district) {
+            return res.status(404).json({ message: "District not found" })
+        }
 
         let wards = district.Wards || [];
 
@@ -125,7 +135,10 @@ module.exports.getWardsByDistrict = async (req, res) => {
             );
         }
 
-        res.json(wards.map(w => ({ Name: w.Name, _id: w._id })));
+        res.json({
+            success: true,
+            result: wards.map(w => ({ wardName: w.Name, wardCode: w._id }))
+        });
     } catch (err) {
         console.error("getWardsByDistrict error:", err);
         res.status(500).json({ message: "Internal server error" });
