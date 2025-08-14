@@ -53,11 +53,105 @@ module.exports.index = async (req, res) => {
 
         const pipeline = [
             { $match: matchStage },
-
             { $sort: { createdAt: -1 } },
             { $skip: skip },
             { $limit: Number(limit) },
 
+            // Unwind addresses để làm việc với từng address
+            {
+                $unwind: {
+                    path: "$addresses",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+
+            // Lookup provinces
+            {
+                $lookup: {
+                    from: "locations",
+                    localField: "addresses.province",
+                    foreignField: "_id",
+                    as: "provinceData",
+                    pipeline: [
+                        { $project: { Name: 1 } }
+                    ]
+                }
+            },
+
+            // Lookup districts
+            {
+                $lookup: {
+                    from: "locations",
+                    let: { districtId: "$addresses.district" },
+                    pipeline: [
+                        { $unwind: "$Districts" },
+                        {
+                            $match: {
+                                $expr: { $eq: ["$Districts._id", "$$districtId"] }
+                            }
+                        },
+                        { $project: { "Districts.Name": 1 } }
+                    ],
+                    as: "districtData"
+                }
+            },
+
+            // Lookup wards
+            {
+                $lookup: {
+                    from: "locations",
+                    let: { wardId: "$addresses.ward" },
+                    pipeline: [
+                        { $unwind: "$Districts" },
+                        { $unwind: "$Districts.Wards" },
+                        {
+                            $match: {
+                                $expr: { $eq: ["$Districts.Wards._id", "$$wardId"] }
+                            }
+                        },
+                        { $project: { "Districts.Wards.Name": 1 } }
+                    ],
+                    as: "wardData"
+                }
+            },
+
+            // Group lại addresses cho mỗi customer
+            {
+                $group: {
+                    _id: "$_id",
+                    fullName: { $first: "$fullName" },
+                    phone: { $first: "$phone" },
+                    createdAt: { $first: "$createdAt" },
+                    addresses: {
+                        $push: {
+                            $cond: {
+                                if: { $ne: ["$addresses", null] },
+                                then: {
+                                    province: { $first: "$provinceData.Name" },
+                                    district: { $first: "$districtData.Districts.Name" },
+                                    ward: { $first: "$wardData.Districts.Wards.Name" },
+                                    detailAddress: "$addresses.detailAddress"
+                                },
+                                else: null
+                            }
+                        }
+                    }
+                }
+            },
+
+            // Filter out null addresses
+            {
+                $addFields: {
+                    addresses: {
+                        $filter: {
+                            input: "$addresses",
+                            cond: { $ne: ["$$this", null] }
+                        }
+                    }
+                }
+            },
+
+            // Final projection
             {
                 $project: {
                     _id: 0,
@@ -78,6 +172,7 @@ module.exports.index = async (req, res) => {
 
         const data = await Customer.aggregate(pipeline);
 
+        // Count total với cùng match condition
         const totalAgg = await Customer.aggregate([
             { $match: matchStage },
             { $count: "total" }
