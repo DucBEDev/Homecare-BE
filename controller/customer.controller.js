@@ -284,7 +284,7 @@ module.exports.checkCusExist = async (req, res) => {
             deleted: false,
             applyStartDate: { $lte: now },
             applyEndDate: { $gte: now }
-        }).select("title description applyStartDate applyEndDate");
+        }).select("title description applyStartDate applyEndDate rate");
 
         res.json({
             success: true,

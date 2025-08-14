@@ -303,7 +303,7 @@ module.exports.createPost = async (req, res) => {
 
         for (let i = 0; i < requestDetailList.length; i++) {
             let objectData = {
-                workingDate: moment(requestDetailList[i].date).toDate(),
+                workingDate: moment.utc(requestDetailList[i].date, "YYYY-MM-DD").toDate(),
                 startTime: req.body.startTime,
                 endTime: req.body.endTime,
                 helper_id: "notAvailable",

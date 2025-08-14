@@ -36,6 +36,9 @@ app.use(session({ cookie: { maxAge: 60000}}));
 const routeAdmin = require('./routes/index.route')
 routeAdmin(app);
 
+// Cron jobs
+require('./helpers/autoAssignHelper.helper');
+
 app.listen(port, () => {
     console.log(`App listening on port ${port}`);
 });
