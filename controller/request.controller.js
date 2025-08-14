@@ -181,60 +181,88 @@ module.exports.index = async (req, res) => {
 // [GET] /admin/requests/create
 module.exports.create = async (req, res) => {
     try {
-        const locations = await Location.find({});
-        const services = await Service.find({
-            deleted: false,
-            status: "active"
-        });
-        const coefficientLists = await CostFactorType.find(
-            { 
-                deleted: false,
-                status: "active",
-                applyTo: { $in: ["service", "other"] } 
-            }
-        ).select("coefficientList applyTo");
-        const serviceList = [];
-        const coefficientOtherList = [];
-       
-        for (let i = 0; i < coefficientLists.length; i++) {
-            if (coefficientLists[i].applyTo == "service") {
-                for (let j = 0; j < coefficientLists[i].coefficientList.length; j++) {
-                    for (let k = 0; k < services.length; k++) {
-                        if (services[k].coefficient_id == coefficientLists[i].coefficientList[j].id) {
-                            serviceList.push({
-                                title: services[k].title,
-                                basicPrice: services[k].basicPrice,
-                                coefficient: coefficientLists[i].coefficientList[j].value  
-                            });
+        const generalSetting = await GeneralSetting
+                                        .findOne({ id: "generalSetting" })
+                                        .select("baseSalary openHour closeHour officeStartTime officeEndTime");
+
+        const pipeline = [
+            {
+                $match: { status: "active", deleted: false }
+            },
+            {
+                $addFields: {
+                    coefficientObjId: {
+                        $convert: {
+                            input: "$coefficient_id",
+                            to: "objectId",
+                            onError: null,
+                            onNull: null
                         }
                     }
                 }
-            }
-            else {
-                for (let j = 0; j < coefficientLists[i].coefficientList.length; j++) {
-                    coefficientOtherList.push({
-                        title: coefficientLists[i].coefficientList[j].title,
-                        value: coefficientLists[i].coefficientList[j].value
-                    });
+            },
+            {
+                $lookup: {
+                    from: "costFactorTypes",
+                    let: { coeffId: "$coefficientObjId" },
+                    pipeline: [
+                        { $match: { status: "active", deleted: false } },
+                        { $unwind: "$coefficientList" },
+                        {
+                            $match: {
+                                $expr: { $eq: ["$coefficientList._id", "$$coeffId"] },
+                                "coefficientList.status": "active",
+                                "coefficientList.deleted": false
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: "$coefficientList._id",
+                                title: "$coefficientList.title",
+                                description: "$coefficientList.description",
+                                value: "$coefficientList.value",
+                            }
+                        }
+                    ],
+                    as: "costFactorType"
+                }
+            },
+            {
+                $addFields: {
+                    costFactorType: { $arrayElemAt: ["$costFactorType", 0] }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    serviceId: { $toString: "$_id" },
+                    title: 1,
+                    basicPrice: 1,
+                    description: 1,
+                    costFactorType: 1
                 }
             }
-        }
-        
-        const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime openHour closeHour");
-        const timeList = {
-            officeStartTime: convertMinuteToHour(generalSetting.officeStartTime),
-            officeEndTime: convertMinuteToHour(generalSetting.officeEndTime),
-            openHour: convertMinuteToHour(generalSetting.openHour),
-            closeHour: convertMinuteToHour(generalSetting.closeHour)
-        }
+        ];                                                                                               
+        const serviceList = await Service.aggregate(pipeline);
+
+        const coeffOther = await CostFactorType
+                                    .findOne({
+                                        applyTo: "other",
+                                        status: "active",
+                                        deleted: false
+                                    })
+                                    .select("title coefficientList")
 
         res.json({
-            locations: locations,
-            serviceList: serviceList,
-            coefficientOtherList: coefficientOtherList,
-            timeList: timeList
+            success: true,
+            result: {
+                serviceList: serviceList,
+                systemSetting: generalSetting,
+                coefficientOther: coeffOther
+            }
         });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ error: 'An error occurred while fetching data' });
     }
 }
