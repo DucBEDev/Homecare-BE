@@ -2,6 +2,7 @@
 const Customer = require("../models/customer.model");
 const Request = require("../models/request.model");
 const Discount = require("../models/discount.model");
+const Location = require("../models/location.model");
 
 
 function calculateCustomerPoint(points) {
@@ -123,37 +124,85 @@ module.exports.requestHistoryList = async (req, res) => {
 module.exports.checkCusExist = async (req, res) => {
     try {
         const { cusPhone } = req.params;
+        const now = new Date();
 
-        const customer = await Customer.findOne({
-            phone: cusPhone
-        }).select('fullName phone addresses');
+        const customer = await Customer.findOne(
+            { phone: cusPhone },
+            { fullName: 1, phone: 1, addresses: 1 }
+        );
 
         if (!customer) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Customer not found" 
+            return res.status(401).json({
+                success: false,
+                message: "Customer not found"
             });
         }
 
-        const now = new Date();
+        // Collect all location IDs from addresses
+        const locationIds = new Set();
+        customer.addresses?.forEach(addr => {
+            if (addr.province) locationIds.add(addr.province.toString());
+            if (addr.district) locationIds.add(addr.district.toString());
+            if (addr.ward) locationIds.add(addr.ward.toString());
+        });
+
+        // Get location data in one query
+        const locations = await Location.find({
+            $or: [
+                { _id: { $in: Array.from(locationIds) } },
+                { "Districts._id": { $in: Array.from(locationIds) } },
+                { "Districts.Wards._id": { $in: Array.from(locationIds) } }
+            ]
+        }).select("_id Name Districts");
+
+        // Create lookup maps for fast access
+        const provinceMap = new Map();
+        const districtMap = new Map();
+        const wardMap = new Map();
+
+        locations.forEach(province => {
+            provinceMap.set(province._id.toString(), province.Name);
+            
+            province.Districts?.forEach(district => {
+                districtMap.set(district._id.toString(), district.Name);
+                
+                district.Wards?.forEach(ward => {
+                    wardMap.set(ward._id.toString(), ward.Name);
+                });
+            });
+        });
+
+        // Map addresses with location names
+        const addresses = customer.addresses?.map(addr => ({
+            province: provinceMap.get(addr.province?.toString()) || addr.province,
+            provinceId: addr.province,
+            district: districtMap.get(addr.district?.toString()) || addr.district,
+            districtId: addr.district,
+            ward: wardMap.get(addr.ward?.toString()) || addr.ward,
+            wardId: addr.ward,
+            detailAddress: addr.detailAddress
+        })) || [];
+
+        // Get discounts in parallel
         const discounts = await Discount.find({
             status: "active",
             deleted: false,
             applyStartDate: { $lte: now },
             applyEndDate: { $gte: now }
-        }).select('title description rate applyStartDate applyEndDate');
+        }).select("title description applyStartDate applyEndDate");
 
-        res.json({ 
+        res.json({
             success: true,
             customer: {
                 cusName: customer.fullName,
                 phone: customer.phone,
-                addresses: customer.addresses
+                addresses
             },
             discounts
         });
+
     } catch (error) {
         console.error("checkCusExist error:", error);
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        res.status(500).json({ error: "An error occurred while fetching requests" });
     }
 };
