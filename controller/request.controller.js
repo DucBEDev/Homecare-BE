@@ -280,7 +280,6 @@ module.exports.createPost = async (req, res) => {
         req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
         
         req.body.totalCost = parseInt(req.body.totalCost);
-        // const detailTotalCost = parseInt(req.body.detailTotalCost);
         
         let service = {
             title: serviceTitle, 
@@ -298,13 +297,6 @@ module.exports.createPost = async (req, res) => {
             usedPoint: Math.floor(req.body.totalCost * 1 / 100)
         }
         req.body.customerInfo = customerInfo;
-        
-        let location = {
-            province: req.body.province,
-            district: req.body.district,
-            ward: req.body.ward
-        }
-        req.body.location = location;
 
         const scheduleIds = [];
         const requestDetailList = req.body.detailCost;
@@ -315,7 +307,7 @@ module.exports.createPost = async (req, res) => {
                 startTime: req.body.startTime,
                 endTime: req.body.endTime,
                 helper_id: "notAvailable",
-                status: "notDone",
+                status: "pending",
                 helper_cost: 0,
                 cost: parseFloat(requestDetailList[i].cost)
             };
@@ -330,18 +322,18 @@ module.exports.createPost = async (req, res) => {
         const request = new Request(req.body);
         await request.save();
 
-        const customer = await Customer.findOne({ phone: req.body.phone });
-        if (!customer) {
+        const cusExist = req.body.isCusHasAcc;
+        if (!cusExist) {
             const createCustomer = new Customer({
                 fullName: req.body.customerInfo.fullName,
                 phone: req.body.customerInfo.phone,
                 password: md5("111111"),
                 addresses: [
                     {
-                        province: req.body.location.province,
-                        district: req.body.location.district,
-                        ward: req.body.location.ward,
-                        detailAddress: req.body.customerInfo.address
+                        province: req.body.provinceCode,
+                        district: req.body.districtCode,
+                        ward: req.body.wardCode,
+                        detailAddress: req.body.address
                     }
                 ],
                 signedUp: false,
