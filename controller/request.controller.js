@@ -17,6 +17,7 @@ const md5 = require('md5');
 
 // Helpers
 const { convertDate } = require("../helpers/convertDate.helper");
+const { default: mongoose } = require("mongoose");
 
 // Function 
 async function calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, coefficient_helper) {
@@ -275,10 +276,10 @@ module.exports.createPost = async (req, res) => {
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_ot = parseFloat(req.body.coefficient_ot);
-        
-        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        
+ 
+        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
+
         req.body.totalCost = parseInt(req.body.totalCost);
         
         let service = {
@@ -383,165 +384,123 @@ module.exports.deleteItem = async (req, res) => {
     }
 }
 
-// [GET] /admin/requests/edit/:id
-module.exports.edit = async (req, res) => {
+// [GET] /admin/requests/detail/:requestId
+module.exports.detail = async (req, res) => {
     try {
-        const request = await Request.findOne({
-            _id: req.params.id,
-            deleted: false
-        });
-        let temp = {
-            ...request.toObject(),
-            formatStartTime: moment.utc(request.startTime).format("HH:mm"),
-            formatEndTime: moment.utc(request.endTime).format("HH:mm")
-        }
-
-        const locations = await Location.find({});
-        const services = await Service.find({
-            deleted: false,
-            status: "active"
-        });
-        const coefficientLists = await CostFactorType.find(
-            { 
-                deleted: false,
-                applyTo: { $in: ["service", "other"] } 
+        const { requestId } = req.params;
+    
+        const pipeline = [
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(requestId)
+                }
+            },
+            {
+                $lookup: {
+                    from: "requestDetails",
+                    let: { ids: { $map: { input: "$scheduleIds", as: "id", in: { $toObjectId: "$$id" } } } },
+                    pipeline: [
+                        { $match: { $expr: { $in: ["$_id", "$$ids"] } } },
+                        {
+                            $addFields: {
+                                helperObjId: {
+                                    $cond: [
+                                        { $regexMatch: { input: "$helper_id", regex: /^[0-9a-fA-F]{24}$/ } },
+                                        { $toObjectId: "$helper_id" },
+                                        null
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            $lookup: {
+                                from: "helpers",
+                                let: { helperId: "$helperObjId" },
+                                pipeline: [
+                                    { $match: { $expr: { $eq: ["$_id", "$$helperId"] } } },
+                                    {
+                                        $project: {
+                                            _id: 1,           
+                                            fullName: 1,      
+                                            phone: 1,         
+                                        }
+                                    }
+                                ],
+                                as: "helper"
+                            }
+                        },
+                        { $unwind: { path: "$helper", preserveNullAndEmptyArrays: true } }
+                    ],
+                    as: "requestDetails"
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    request: {
+                        orderId: { $toString: "$_id" },
+                        orderDate: {
+                            $dateToString: {
+                                format: "%d/%m/%Y %H:%M:%S",
+                                date: "$orderDate",
+                                timezone: "Asia/Ho_Chi_Minh"
+                            }
+                        },
+                        status: "$status",
+                        customerInfo: "$customerInfo",
+                        service: "$service",
+                        totalCost: "$totalCost"
+                    },
+                    requestDetails: {
+                        $map: {
+                            input: "$requestDetails",
+                            as: "rd",
+                            in: {
+                                detailId: { $toString: "$$rd._id" },
+                                workingDate: {
+                                    $dateToString: {
+                                        format: "%d/%m/%Y",
+                                        date: "$$rd.workingDate",
+                                        timezone: "Asia/Ho_Chi_Minh"
+                                    }
+                                },
+                                startTime: {
+                                    $dateToString: {
+                                        format: "%H:%M",
+                                        date: "$$rd.startTime",
+                                        timezone: "Asia/Ho_Chi_Minh"
+                                    }
+                                },
+                                endTime: {
+                                    $dateToString: {
+                                        format: "%H:%M",
+                                        date: "$$rd.endTime",
+                                        timezone: "Asia/Ho_Chi_Minh"
+                                    }
+                                },
+                                status: "$$rd.status",
+                                cost: "$$rd.cost",
+                                helper_cost: "$$rd.helper_cost",
+                                helper: "$$rd.helper"
+                            }
+                        }
+                    }
+                }
             }
-        ).select("coefficientList applyTo");
+        ];
+        
+        
+
+        const result = await Request.aggregate(pipeline);
 
         res.json({
             success: true,
-            request: temp,
-            locations: locations,
-            services: services,
-            coefficientLists: coefficientLists
-        })
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/requests/edit/:id
-module.exports.editPatch = async (req, res) => {
-    try {
-        const serviceTitle = req.body.serviceTitle;
-        const serviceBasePrice = parseInt(req.body.serviceBasePrice);
-        const coefficient_service = parseFloat(req.body.coefficientService);
-        const coefficient_other = parseFloat(req.body.coefficientOther);
-        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        req.body.status = "notDone";
-        req.body.profit = 0;
-
-        req.body.totalCost = parseInt(req.body.totalCost);
-        // const detailTotalCost = parseInt(req.body.detailTotalCost);
-        
-        let service = {
-            title: serviceTitle, 
-            coefficient_service: coefficient_service,
-            coefficient_other: coefficient_other,
-            cost: serviceBasePrice 
-        };
-        req.body.service = service;
-        
-        let customerInfo = {
-            fullName: req.body.fullName,
-            phone: req.body.phone,
-            address: `${req.body.address}, ${req.body.ward}, ${req.body.district}, ${req.body.province}`,
-            usedPoint: Math.floor(req.body.totalCost * 1 / 100)
-        }
-        req.body.customerInfo = customerInfo;
-        
-        let location = {
-            province: req.body.province,
-            district: req.body.district,
-            ward: req.body.ward
-        }
-        req.body.location = location;
-
-        // Delete old scheduleIds record
-        const scheduleListDetail = await Request.findOne({
-            _id: req.params.id,
-            deleted: false
+            request: result[0]?.request || {},
+            requestDetails: result[0]?.requestDetails || []
         });
-        await RequestDetail.deleteMany({ _id: { $in: scheduleListDetail.scheduleIds } });
-
-        const scheduleIds = [];
-        const requestDetailList = req.body.detailCost;
-
-        for (let i = 0; i < requestDetailList.length; i++) {
-            let objectData = {
-                workingDate: moment(requestDetailList[i].date).toDate(),
-                startTime: req.body.startTime,
-                endTime: req.body.endTime,
-                helper_id: "notAvailable",
-                status: "notDone",
-                helper_cost: 0,
-                cost: parseFloat(requestDetailList[i].cost)
-            };
-
-            const requestDetail = new RequestDetail(objectData);
-            await requestDetail.save();
-            
-            scheduleIds.push(requestDetail.id);
-        }
-        req.body.scheduleIds = scheduleIds;
-        
-        await Request.updateOne(
-            { _id: req.params.id },
-            req.body
-        );
-        
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [GET] /admin/requests/detail/:id
-module.exports.detail = async (req, res) => {
-    try {
-        let find = {
-            _id: req.params.id,
-            deleted: false
-        };
-    
-        const request = await Request.findOne(find);
-        const helpers = await Helper.find({ deleted: false }).select("fullName phone birthDate address baseFactor");
-        const scheduleRequest = [];
-        const coefficientOtherLists = await CostFactorType.find(
-            { 
-                deleted: false,
-                applyTo: "other" 
-            }
-        ).select("coefficientList");
-        
-        for (const id of request.scheduleIds) {
-            let record = await RequestDetail.findOne({ 
-                _id: id
-            });
-            
-            record = {
-                ...record.toObject(),
-                helperName: "null",
-                startTime: moment(record.startTime).utc().format("HH:mm"),
-                endTime: moment(record.endTime).utc().format("HH:mm")
-            };
-
-            if (record.helper_id != "notAvailable") {
-               helperName = await Helper.findOne({ _id: record.helper_id }).select("fullName");
-               record.helperName = helperName.fullName;
-            }
-            scheduleRequest.push(record);
-        }
-    
-        res.json({
-            request: request,
-            helpers: helpers,
-            scheduleRequest: scheduleRequest,
-            coefficientOtherLists: coefficientOtherLists[0].coefficientList
-        })
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+    } catch (err) {
+        console.error("getRequestDetail error:", err);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
