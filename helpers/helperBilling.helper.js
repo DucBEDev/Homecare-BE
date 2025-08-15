@@ -1,17 +1,43 @@
 const GeneralSetting = require("../models/generalSetting.model");
+const moment = require('moment');
 
+module.exports.helperBilling = async (startTime, endTime, service_coeff, coefficient_helper) => {
+    const generalSetting = await GeneralSetting.findOne({ id: "generalSetting" })
+        .select("officeStartTime officeEndTime baseSalary");
 
-module.exports.helperBilling = async (startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, coefficient_helper) => {
-    const generalSetting = await GeneralSetting.findOne({ id: "generalSetting" }).select("officeStartTime officeEndTime baseSalary");
+    const officeStartHour = parseInt(moment(generalSetting.officeStartTime, "HH:mm").format("H"));
+    const officeEndHour = parseInt(moment(generalSetting.officeEndTime, "HH:mm").format("H"));
 
-    const hoursDiff = Math.ceil(endTime.getUTCHours() - startTime.getUTCHours());
-    const officeStartTime = moment(generalSetting.officeStartTime, "HH:mm").hours();
-    const officeEndTime = moment(generalSetting.officeEndTime, "HH:mm").hours();
-    const OTStartTime = officeStartTime - startTime.getUTCHours() >= 0 ? officeStartTime - startTime.getUTCHours() : 0;
-    const OTEndTime = endTime.getUTCHours() - officeEndTime >= 0 ? endTime.getUTCHours() - officeStartTime : 0;
-    const OTTotalHour = OTStartTime + OTEndTime;
+    const startHour = startTime.getHours(); 
+    const endHour = endTime.getHours();
 
-    const totalCost = generalSetting.baseSalary * coefficient_service * coefficient_helper * ((coefficient_OT * OTTotalHour) + (coefficient_other * (hoursDiff - OTTotalHour)));
+    const totalHours = endHour - startHour; 
+
+    // Số giờ OT đầu ca
+    const otStartHours = startHour < officeStartHour
+        ? officeStartHour - startHour
+        : 0;
+
+    // Số giờ OT cuối ca
+    const otEndHours = endHour > officeEndHour
+        ? endHour - officeEndHour
+        : 0;
+
+    // Tổng giờ OT
+    const totalOtHours = otStartHours + otEndHours;
+
+    // Tổng giờ thường
+    const totalNormalHours = totalHours - totalOtHours;
+
+    // Tính lương
+    const totalCost =
+        generalSetting.baseSalary *
+        service_coeff.coefficient_service *
+        coefficient_helper *
+        (
+            (service_coeff.coefficient_ot * totalOtHours) +
+            (service_coeff.coefficient_other * totalNormalHours)
+        );
 
     return totalCost;
-}
+};
