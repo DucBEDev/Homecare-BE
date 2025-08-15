@@ -8,9 +8,6 @@ const Customer = require("../models/customer.model");
 const CostFactorType = require("../models/costFactorType.model");
 const GeneralSetting = require("../models/generalSetting.model");
 
-// Global variables
-const generalSetting_id = "generalSetting";
-
 // Libs
 const moment = require("moment");
 const md5 = require('md5');
@@ -18,22 +15,6 @@ const md5 = require('md5');
 // Helpers
 const { convertDate } = require("../helpers/convertDate.helper");
 const { default: mongoose } = require("mongoose");
-
-// Function 
-async function calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, coefficient_helper) {
-    const generalSetting = await GeneralSetting.findOne({ id: generalSetting_id }).select("officeStartTime officeEndTime baseSalary");
-
-    const hoursDiff = Math.ceil(endTime.getUTCHours() - startTime.getUTCHours());
-    const officeStartTime = moment(generalSetting.officeStartTime, "HH:mm").hours();
-    const officeEndTime = moment(generalSetting.officeEndTime, "HH:mm").hours();
-    const OTStartTime = officeStartTime - startTime.getUTCHours() >= 0 ? officeStartTime - startTime.getUTCHours() : 0;
-    const OTEndTime = endTime.getUTCHours() - officeEndTime >= 0 ? endTime.getUTCHours() - officeStartTime : 0;
-    const OTTotalHour = OTStartTime + OTEndTime;
-
-    const totalCost = generalSetting.baseSalary * coefficient_service * coefficient_helper * ((coefficient_OT * OTTotalHour) + (coefficient_other * (hoursDiff - OTTotalHour)));
-
-    return totalCost;
-}
 
 function convertMinuteToHour(minute) {
     const duration = moment.duration(minute, 'minutes');
@@ -253,6 +234,11 @@ module.exports.create = async (req, res) => {
                                         deleted: false
                                     })
                                     .select("title coefficientList")
+                                    .lean();
+
+        if (coeffOther) {
+            coeffOther.coefficientList = coeffOther.coefficientList.filter(c => (c.status === "active" && c.deleted === false));
+        }
 
         res.json({
             success: true,
