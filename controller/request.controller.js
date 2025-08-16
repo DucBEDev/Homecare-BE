@@ -16,10 +16,6 @@ const md5 = require('md5');
 const { convertDate } = require("../helpers/convertDate.helper");
 const { default: mongoose } = require("mongoose");
 
-function convertMinuteToHour(minute) {
-    const duration = moment.duration(minute, 'minutes');
-    return duration.asHours().toFixed(2).replace('.', ':');
-}
 
 // [GET] /admin/requests
 module.exports.index = async (req, res) => {
@@ -339,32 +335,43 @@ module.exports.createPost = async (req, res) => {
     }
 }
 
-// [DELETE] /admin/requests/delete/:id
-module.exports.deleteItem = async (req, res) => {
+// [PATCH] /admin/requests/cancelAll/:requestId
+module.exports.cancelAll = async (req, res) => {
     try {
-        const id = req.params.id;
-        const scheduleIds = req.body.scheduleIds;
+        const requestId = req.params.requestId;
 
-        for (const id of scheduleIds) {
-            await RequestDetail.updateOne(
-                { _id: id },
-                { 
-                    status: "cancelled",
-                    helper_cost: 0,
-                    helper_id: "notAvailable"
-                }
-            );
+        const request = await Request.findById(requestId).select("scheduleIds");
+        if (!request) {
+            return res.status(404).json({ success: false, message: "Request not found" });
         }
 
-        await Request.updateOne(
-            { _id: id },
-            { 
-                deleted: true,
-                status: "cancelled"
-            }
-        )
+        const detailCount = await RequestDetail.countDocuments({
+            _id: { $in: request.scheduleIds },
+            status: { $in: ["pending", "assigned"] }
+        });
 
-        res.json({ success: true });
+        if (detailCount === request.scheduleIds.length) {
+            await Promise.all([
+                RequestDetail.updateMany(
+                    { _id: { $in: request.scheduleIds } },
+                    { $set: { status: "cancelled" } }
+                ),
+                Request.updateOne(
+                    { _id: requestId },
+                    { $set: { status: "cancelled" } }
+                )
+            ]);
+            res.status(200).json({ 
+                success: true ,
+                message: "Request cancelled successfully!"
+            });
+        }
+        else {
+            res.status(409).json({
+                success: false,
+                message: "Request cancelled fail!"
+            })
+        }
     } catch (error) {
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
@@ -490,325 +497,66 @@ module.exports.detail = async (req, res) => {
     }
 }
 
-// [PATCH] /admin/requests/detail/assignSubRequest/:requestDetailId
-module.exports.assignSubRequest = async (req, res) => {
-    try {
-        const requestDetailId = req.params.requestDetailId;
-        const helper_id = req.body.helper_id;
-        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const helper_baseFactor = parseFloat(req.body.helper_baseFactor);
-        const coefficient_OT = parseFloat(req.body.coefficient_ot);
-        const coefficient_other = parseFloat(req.body.coefficient_other);
-        const coefficient_service = parseFloat(req.body.coefficient_service);
-        const oldHelperCost = parseFloat(req.body.helperCost);
-        const newHelperCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
-
-        
-        await RequestDetail.updateOne(
-            { _id: requestDetailId },
-            { 
-                helper_id: helper_id,
-                helper_cost: newHelperCost,
-                status: "assigned"
-            }
-        ); 
-
-        const parentRequest = await Request.findOne({ 
-            scheduleIds: requestDetailId,
-            status: { $nin: ["done", "cancelled"] } 
-        });
-        const profit = (parentRequest.profit == 0 ? parentRequest.totalCost : parentRequest.profit) + oldHelperCost - newHelperCost;
-        
-        if (parentRequest) {
-            await Request.updateOne(
-                { _id: parentRequest._id },
-                { 
-                    status: "assigned",
-                    profit: profit
-                }
-            );
-        }
-
-        res.json({ 
-            success: true,
-            totalCost: newHelperCost, 
-            profit: profit
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/requests/detail/assignFullRequest
-module.exports.assignFullRequest = async (req, res) => {
-    try {
-        const helper_id = req.body.helper_id;
-        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const helper_baseFactor = req.body.baseFactor;
-        const coefficient_OT = req.body.coefficient_ot;
-        const coefficient_other = req.body.coefficient_other;
-        const coefficient_service = req.body.coefficient_service;
-        const scheduleIds = req.body.scheduleIds;
-        let helperCostList = {};
-        let helperTotalCost = 0;
-
-        for (const scheduleId of scheduleIds) {
-            const findDetail = await RequestDetail.findOne({ _id: scheduleId });
-
-            if (findDetail.status == "notDone" || findDetail.status == "assigned") {
-                const totalCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
-                helperTotalCost += totalCost;
-
-                await RequestDetail.updateOne(
-                    { 
-                        _id: scheduleId
-                    },
-                    { 
-                        helper_id: helper_id,
-                        helper_cost: totalCost,
-                        status: "assigned"
-                    }
-                );
-                helperCostList[scheduleId] = totalCost;
-            }
-            else {
-                helperTotalCost += findDetail.helper_cost;
-                helperCostList[scheduleId] = findDetail.helper_cost;
-            }
-        }
-        
-        const parentRequest = await Request.findOne({ 
-            scheduleIds: { $in: scheduleIds },
-            status: { $nin: ["done", "cancelled"] } 
-        });
-
-        if (parentRequest) {
-            await Request.updateOne(
-                { _id: parentRequest._id },
-                { 
-                    status: "assigned",
-                    profit: parentRequest.totalCost - helperTotalCost
-                }
-            );
-        }
-
-        res.json({ 
-            success: true,
-            helperCostList: helperCostList
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/requests/detail/cancel/:requestDetailId
-module.exports.cancel = async (req, res) => {
+// [PATCH] /admin/requests/cancelDetail/:requestDetailId
+module.exports.cancelDetail = async (req, res) => {
     try {
         const id = req.params.requestDetailId;
 
-        const oldDetail = await RequestDetail.findOne({ _id: id }).select("cost helper_cost");
-        
+        // Lấy detail cần cancel + request chứa nó
+        const oldDetail = await RequestDetail.findById(id).select("cost helper_cost status");
+        if (!oldDetail) {
+            return res.status(404).json({ success: false, message: "RequestDetail not found" });
+        }
+
+        // Chỉ cho phép cancel khi status là pending hoặc assigned
+        if (!["pending", "assigned"].includes(oldDetail.status)) {
+            return res.status(400).json({
+                success: false,
+                message: `RequestDetail cancelled fail!`
+            });
+        }
+
+        const request = await Request.findOne({ scheduleIds: id }).select("scheduleIds totalCost profit");
+        if (!request) {
+            return res.status(404).json({ success: false, message: "Request not found" });
+        }
+
+        // Cập nhật detail thành cancelled
         await RequestDetail.updateOne(
             { _id: id },
-            { 
-                status: "cancelled",
-                helper_cost: 0,
-                helper_id: "notAvailable"
-            }
+            { $set: { status: "cancelled", helper_cost: 0, helper_id: "notAvailable" } }
         );
-        
-        const request = (await Request.findOne({ "scheduleIds": id }).select("scheduleIds totalCost profit"));
+
+        // Tính lại cost & profit
         const newRequestCost = request.totalCost - oldDetail.cost;
-        const newProfit = newRequestCost - (request.totalCost - request.profit - oldDetail.helper_cost);
+        const newProfit = request.profit - (oldDetail.cost - oldDetail.helper_cost);
+
         const objectUpdate = {
             totalCost: newRequestCost,
             profit: newProfit
-        }
+        };
 
-        const isRemainingDetail = await RequestDetail.findOne({ 
+        // Nếu tất cả detail bị cancel => cancel request
+        const isRemainingDetail = await RequestDetail.exists({
             _id: { $in: request.scheduleIds },
             status: { $ne: "cancelled" }
         });
-        if (isRemainingDetail == null) {
+
+        if (!isRemainingDetail) {
             objectUpdate.status = "cancelled";
         }
 
         await Request.updateOne(
-            { _id: request.id },
-            objectUpdate
-        )
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/requests/detail/changeTime/:requestDetailId
-module.exports.changeTime = async (req, res) => {
-    try {
-        const id = req.params.requestDetailId;
-        const startTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const endTime = moment(`${moment().format('YYYY-MM-DD')} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').add(7, 'hours').toDate();
-        const helper_baseFactor = parseFloat(req.body.helper_baseFactor);
-        const coefficient_OT = parseFloat(req.body.coefficient_OT);
-        const coefficient_other = parseFloat(req.body.coefficient_other);
-        const coefficient_service = parseFloat(req.body.coefficient_service);
-        const newDetailCost = parseFloat(req.body.totalCost);
-        const oldDetailRequest = await RequestDetail.findOne({ _id: id }).select("cost helper_cost");
-        const newHelperCost = await calculateCost(startTime, endTime, coefficient_service, coefficient_OT, coefficient_other, helper_baseFactor);
-
-        await RequestDetail.updateOne(
-            { _id: id },
-            { 
-                startTime: startTime,
-                endTime: endTime,
-                helper_cost: newHelperCost,
-                cost: newDetailCost    
-            }
+            { _id: request._id },
+            { $set: objectUpdate }
         );
 
-        const request = await Request.findOne({ "scheduleIds": id });
-        const updateRequestCost = request.totalCost - oldDetailRequest.cost + newDetailCost;
-        let newProfit = 0;
-        if (request.profit != 0) {
-            const oldHelperCost = request.totalCost - request.profit;
-            newProfit = updateRequestCost - (oldHelperCost - oldDetailRequest.helper_cost + newHelperCost)
-        }
-
-        await Request.updateOne(
-            { _id: request.id },
-            { totalCost: updateRequestCost, profit: newProfit }
-        )
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [GET] /admin/requests/updateRequestDetailDone/:requestDetailId
-module.exports.updateRequestDetailDone = async (req, res) => {
-    try {
-        const id = req.params.requestDetailId;
-        const helper_cost = await RequestDetail.findOne({ _id: id }).select("helper_cost");
-
-        res.json({ 
+        res.status(200).json({ 
             success: true,
-            helper_cost: helper_cost.helper_cost 
+            message: "RequestDetail cancelled successfully!"
         });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        console.error("cancelDetail error:", error);
+        res.status(500).json({ error: "An error occurred while cancelling detail" });
     }
-}
-
-// [PATCH] /admin/requests/updateRequestDetailDone/:requestDetailId
-module.exports.updateRequestDetailDonePatch = async (req, res) => {
-    try {
-        const id = req.params.requestDetailId;
-        const comment = {
-            review: req.body.review,
-            loseThings: req.body.loseThings,
-            breakThings: req.body.breakThings
-        };
-        
-        await RequestDetail.updateOne(
-            { _id: id },
-            { 
-                status: "done",
-                comment: comment
-            }
-        );
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/requests/updateRequestDone/:requestId
-module.exports.updateRequestDonePatch = async (req, res) => {
-    try {
-        const id = req.params.requestId;
-        const request = await Request.findOne({ _id: id }).select("scheduleIds startTime endTime customerInfo service totalCost");
-
-        const isDone = await RequestDetail.findOne({
-            _id: request.scheduleIds,
-            status: { $nin: "done" }
-        });
-        
-        if (isDone != null) {
-            return res.status(400).json({ error: 'done request error' });
-        }
-
-        const requestDetail = await RequestDetail.find({ _id: { $in: request.scheduleIds } });
-        let helperCost = 0;
-        for (const detail of requestDetail) {
-            helperCost += detail.helper_cost;
-        }
-
-        const profit = request.totalCost - helperCost;
-        
-        await Request.updateOne(
-            { _id: id },
-            { 
-                status: "done",
-                profit: profit 
-            }
-        );
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [GET] /admin/requests/detail/history/:requestDetailId
-module.exports.history = async (req, res) => {
-    try {
-        const id = req.params.requestDetailId;
-
-        const record = await RequestDetail.findOne( { _id: id } ).select("comment");
-        res.json({
-            success: true,
-            comment: record.comment
-        })
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/requests/updateDetailWaitPayment/:requestDetailId
-module.exports.updateRequestWaitPaymentPatch = async (req, res) => {
-    try {
-        const id = req.params.requestDetailId;
-        await RequestDetail.updateOne(
-            { _id: id },
-            { 
-                status: "waitPayment"
-            }
-        );
-        return res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/requests/updateRequestProcessing/:requestDetailId
-module.exports.updateRequestProcessing = async (req, res) => {
-    try {
-        const id = req.params.requestDetailId;
-
-        await RequestDetail.updateOne(
-            { _id: id },
-            { 
-                status: "processing"
-            }
-        );
-        return res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
+};

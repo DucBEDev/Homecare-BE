@@ -6,17 +6,8 @@ const controller = require("../controller/request.controller")
 router.get('/', controller.index);
 router.get('/create', controller.create);
 router.post('/create', controller.createPost);
-router.delete('/delete/:id', controller.deleteItem);
+router.patch('/cancelAll/:requestId', controller.cancelAll);
 router.get('/detail/:requestId', controller.detail);
-router.get('/detail/history/:requestDetailId', controller.history);
-router.patch('/detail/assignFullRequest', controller.assignFullRequest);
-router.patch('/detail/assignSubRequest/:requestDetailId', controller.assignSubRequest);
-router.patch('/detail/cancel/:requestDetailId', controller.cancel);
-router.patch('/detail/changeTime/:requestDetailId', controller.changeTime);
-router.patch('/updateRequestDone/:requestId', controller.updateRequestDonePatch);
-router.patch('/updateDetailWaitPayment/:requestDetailId', controller.updateRequestWaitPaymentPatch);
-router.patch('/updateRequestDetailDone/:requestDetailId', controller.updateRequestDetailDonePatch);
-router.get('/updateRequestDetailDone/:requestDetailId', controller.updateRequestDetailDone);
-router.patch('/updateRequestProcessing/:requestDetailId', controller.updateRequestProcessing);
+router.patch('/cancelDetail/:requestDetailId', controller.cancelDetail);
 
 module.exports = router;
