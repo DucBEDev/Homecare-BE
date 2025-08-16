@@ -560,3 +560,31 @@ module.exports.cancelDetail = async (req, res) => {
         res.status(500).json({ error: "An error occurred while cancelling detail" });
     }
 };
+
+// [PATCH] /admin/requests/changeStatus/:id?status=&type=
+module.exports.changeStatus = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { status, type } = req.query;
+        
+        if (type === 'request') {
+            await Request.updateOne(
+                { _id: id },
+                { $set: { status: status } }
+            );
+        } else if (type === 'requestDetail') {
+            await RequestDetail.updateOne(
+                { _id: id },
+                { $set: { status: status } }
+            );
+        }
+
+        res.status(200).json({ 
+            success: true,
+            message: "Status update successfully!"
+        });
+    } catch (error) {
+        console.error("error:", error);
+        res.status(500).json({ error: "An error occurred while cancelling detail" });
+    }
+};
