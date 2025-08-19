@@ -566,25 +566,77 @@ module.exports.changeStatus = async (req, res) => {
     try {
         const id = req.params.id;
         const { status, type } = req.query;
-        
+
         if (type === 'request') {
             await Request.updateOne(
                 { _id: id },
                 { $set: { status: status } }
             );
         } else if (type === 'requestDetail') {
-            await RequestDetail.updateOne(
-                { _id: id },
-                { $set: { status: status } }
+            const updatedDetail = await RequestDetail.findByIdAndUpdate(
+                id,
+                { $set: { status: status } },
+                { new: true } // return new document after proceeding update
             );
+
+            if (!updatedDetail) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: "RequestDetail not found" 
+                });
+            }
+
+            const request = await Request.findOne({
+                scheduleIds: { $in: [id] }
+            });
+
+            if (!request) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: "Request not found" 
+                });
+            }
+
+            const allDetails = await RequestDetail.find({
+                _id: { $in: request.scheduleIds }
+            });
+
+            if (status === 'inProgress') {
+                const inProgressDetails = allDetails.filter(detail => 
+                    detail.status === 'inProgress'
+                );
+                
+                if (inProgressDetails.length === 1) {
+                    await Request.updateOne(
+                        { _id: request._id },
+                        { $set: { status: 'inProgress' } }
+                    );
+                }
+            } else if (status === 'completed') {
+                const remainingDetails = allDetails.filter(detail => 
+                    detail._id.toString() !== id && 
+                    detail.status !== 'completed' && 
+                    detail.status !== 'cancelled'
+                );
+
+                if (remainingDetails.length === 0) {
+                        await Request.updateOne(
+                        { _id: request._id },
+                        { $set: { status: 'waitPayment' } }
+                    );
+                }
+            }
         }
 
-        res.status(200).json({ 
+        res.status(200).json({
             success: true,
-            message: "Status update successfully!"
+            message: "Status updated successfully!"
         });
     } catch (error) {
         console.error("error:", error);
-        res.status(500).json({ error: "An error occurred while cancelling detail" });
+        res.status(500).json({ 
+            success: false,
+            error: "An error occurred while updating status" 
+        });
     }
 };
