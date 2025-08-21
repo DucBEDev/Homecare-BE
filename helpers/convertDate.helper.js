@@ -1,7 +1,12 @@
 module.exports.convertDate = (data) => {
-    const [day, month, year] = data.split('/');
+    let [day, month, year] = data.split('/');
 
-    const date = new Date(year, month - 1, day);
+    if (!year || !month || !day) {
+        [day, month, year] = data.split('-');
+    }
 
-    return date;
+    if (year && month && day) {
+        return `${year}-${month.padStart(2,"0")}-${day.padStart(2,"0")}`;
+    }
+    return data;
 };

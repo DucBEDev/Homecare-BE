@@ -258,9 +258,9 @@ module.exports.createPost = async (req, res) => {
         const coefficient_service = parseFloat(req.body.coefficient_service);
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_ot = parseFloat(req.body.coefficient_ot);
- 
-        req.body.startTime = moment(`${req.body.startDate} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
-        req.body.endTime = moment(`${req.body.endDate} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
+
+        req.body.startTime = moment(`${convertDate(req.body.startDate)} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        req.body.endTime = moment(`${convertDate(req.body.endDate)} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
 
         req.body.totalCost = parseInt(req.body.totalCost);
         
@@ -286,7 +286,7 @@ module.exports.createPost = async (req, res) => {
 
         for (let i = 0; i < requestDetailList.length; i++) {
             let objectData = {
-                workingDate: moment.utc(requestDetailList[i].date, "YYYY-MM-DD").toDate(),
+                workingDate: moment.utc(convertDate(requestDetailList[i].date), "YYYY-MM-DD").toDate(),
                 startTime: req.body.startTime,
                 endTime: req.body.endTime,
                 helper_id: "notAvailable",
@@ -331,6 +331,7 @@ module.exports.createPost = async (req, res) => {
         }
         res.json({ success: true });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
 }

@@ -16,7 +16,7 @@ module.exports.index = async (req, res) => {
             records: records
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -28,7 +28,7 @@ module.exports.createPost = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -47,7 +47,7 @@ module.exports.detail = async (req, res) => {
             record: record
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -66,7 +66,7 @@ module.exports.edit = async (req, res) => {
             record: record
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -80,7 +80,7 @@ module.exports.editPatch = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -94,7 +94,7 @@ module.exports.deleteItem = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -104,14 +104,14 @@ module.exports.permissions = async (req, res) => {
         let find = {
             deleted: false
         };
-        const records = await Role.find(find);
+        const records = await Role.find(find).select("title permissions");
 
         res.json({
             success: true,
             records: records
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -130,6 +130,6 @@ module.exports.permissionsPatch = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
