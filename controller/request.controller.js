@@ -13,7 +13,7 @@ const moment = require("moment");
 const md5 = require('md5');
 
 // Helpers
-const { convertDate } = require("../helpers/convertDate.helper");
+const { convertDate, convertDateObject } = require("../helpers/convertDate.helper");
 const { default: mongoose } = require("mongoose");
 
 
@@ -29,8 +29,8 @@ module.exports.index = async (req, res) => {
         }
 
         if (fromDate && toDate) {
-            const from = convertDate(fromDate);
-            const to = convertDate(toDate);
+            const from = convertDateObject(fromDate);
+            const to = convertDateObject(toDate);
 
             to.setHours(23, 59, 59, 999);
             matchStage.orderDate = { $gte: from, $lte: to };

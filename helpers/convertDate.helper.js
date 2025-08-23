@@ -10,3 +10,16 @@ module.exports.convertDate = (data) => {
     }
     return data;
 };
+
+module.exports.convertDateObject = (data) => {
+    let [day, month, year] = data.split('/');
+
+    if (!year || !month || !day) {
+        [day, month, year] = data.split('-');
+    }
+
+    if (year && month && day) {
+        return new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`);
+    }
+    return new Date(data);
+};
