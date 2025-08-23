@@ -5,7 +5,6 @@ const controller = require("../controller/role.controller")
 
 router.get('/', controller.index);
 router.post('/create', controller.createPost);
-router.get('/detail/:id', controller.detail);
 router.get('/edit/:id', controller.edit);
 router.patch('/edit/:id', controller.editPatch);
 router.delete('/delete/:id', controller.deleteItem);

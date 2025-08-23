@@ -525,16 +525,16 @@ module.exports.cancelDetail = async (req, res) => {
         // Cập nhật detail thành cancelled
         await RequestDetail.updateOne(
             { _id: id },
-            { $set: { status: "cancelled", helper_cost: 0, helper_id: "notAvailable" } }
+            { $set: { status: "cancelled", helper_cost: 0, helper_id: "notAvailable", cost: 0 } }
         );
 
         // Tính lại cost & profit
         const newRequestCost = request.totalCost - oldDetail.cost;
-        const newProfit = request.profit - (oldDetail.cost - oldDetail.helper_cost);
+        // const newProfit = request.profit - (oldDetail.cost - oldDetail.helper_cost);
 
         const objectUpdate = {
             totalCost: newRequestCost,
-            profit: newProfit
+            // profit: newProfit
         };
 
         // Nếu tất cả detail bị cancel => cancel request

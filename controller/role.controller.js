@@ -9,7 +9,7 @@ module.exports.index = async (req, res) => {
             deleted: false
         };
     
-        const records = await Role.find(find);
+        const records = await Role.find(find).select("title description");
 
         res.json({
             success: true,
@@ -32,25 +32,6 @@ module.exports.createPost = async (req, res) => {
     }
 }
 
-// [GET] /admin/roles/detail/:id
-module.exports.detail = async (req, res) => {
-    try {
-        const record = await Role.findOne(
-            { 
-                _id: req.params.id,
-                deleted: false
-            }
-        );
-
-        res.json({
-            success: true,
-            record: record
-        })
-    } catch (error) {
-        res.status(500).json({ error: 'Server error' });   
-    }
-}
-
 // [GET] /admin/roles/edit/:id
 module.exports.edit = async (req, res) => {
     try {
@@ -59,7 +40,7 @@ module.exports.edit = async (req, res) => {
                 _id: req.params.id,
                 deleted: false
             }
-        );
+        ).select('title description');
 
         res.json({
             success: true,
