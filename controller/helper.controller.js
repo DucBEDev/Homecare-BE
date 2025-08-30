@@ -4,43 +4,38 @@ const Helper = require("../models/helper.model");
 const Service = require("../models/service.model");
 const CostFactorType = require("../models/costFactorType.model");
 
+const moment = require("moment");
+
 
 // [GET] /admin/helpers
 module.exports.index = async (req, res) => {
     try {
         let find = { deleted: "false" };
 
-        const helpers = await Helper.find(find);
+        const helpers = await Helper.find(find)
+                                    .select("helper_id fullName phone avatar workingStatus");
         
         res.json({
             success: true,
             helpers: helpers
         });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        res.status(500).json({ error: 'Server error' });
     }
 }
 
 // [GET] /admin/helpers/create
 module.exports.create = async (req, res) => {
     try {
-        const locations = await Location.find({});
-        const services = await Service.find({ deleted: false });
-        const costFactors = await CostFactorType.findOne(
-            { 
-                status: "active",
-                applyTo: "helper" 
-            }
-        ).select("coefficientList");
+        const services = await Service.find({ deleted: false })
+                                    .select("title");      
 
         res.json({
             success: true,
-            locations: locations,
-            services: services,
-            coefficientList: costFactors.coefficientList
+            services: services
         });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        res.status(500).json({ error: 'Server error' });
     }
 }
 
@@ -56,7 +51,7 @@ module.exports.createPost = async (req, res) => {
         if (helperIdExist) {
             res.json({
                 success: false,
-                msg: "CMND người giúp việc đã tồn tại"
+                message: "Helper id existed"
             })
             return;
         }
@@ -70,17 +65,9 @@ module.exports.createPost = async (req, res) => {
         if (phoneExist) {
             res.json({
                 success: false,
-                msg: "Số điện thoại người giúp việc đã tồn tại"
+                message: "Phone number existed"
             })
             return;
-        }
-        
-        if (typeof(req.body.districts) === "string") {
-            req.body.districts = [req.body.districts];
-        }
-    
-        if (typeof(req.body.jobs) === "string") {
-            req.body.jobs = [req.body.jobs];
         }
     
         if (req.body.avatar) {
@@ -92,76 +79,7 @@ module.exports.createPost = async (req, res) => {
 
         res.json({success: true}); 
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/helpers/change-multi
-module.exports.changeMulti = async (req, res) => {
-    try {
-        const type = req.body.type;
-        const ids = req.body.ids.split(", ");
-
-        switch (type) {
-            case "active":
-                await Helper.updateMany(
-                    { _id: { $in: ids } },
-                    { status: "active"}
-                );
-                res.json({ success: true })
-                break;
-            case "inactive":
-                await Helper.updateMany(
-                    { _id: { $in: ids } },
-                    { status: "inactive"}
-                );
-                res.json({ success: true })
-                break;
-            case "delete-all":
-                await Helper.updateMany(
-                    { _id: { $in: ids } },
-                    { deleted: true }
-                );
-                res.json({ success: true })
-                break;
-            default:
-                break;
-    }
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [PATCH] /admin/helpers/change-status/:status/:id
-module.exports.changeStatus = async (req, res) => {
-    try {
-        const status = req.params.status;
-        const id = req.params.id;
-
-        await Helper.updateOne(
-            { _id: id },
-            { status: status }
-        )
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [DELETE] /admin/helpers/delete/:id
-module.exports.deleteItem = async (req, res) => {
-    try {
-        const id = req.params.id;
-
-        await Helper.updateOne(
-            { _id: id },
-            { deleted: true }
-        )
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        res.status(500).json({ error: 'Server error' });
     }
 }
 
@@ -169,26 +87,21 @@ module.exports.deleteItem = async (req, res) => {
 module.exports.detail = async (req, res) => {
     try {
         const helper = await Helper.findOne(
-            { _id: req.params.id },
-            { deleted: false }
-        );
-    
-        let services = [];
-        for (const job of helper.jobs) {
-            const service = await Service.findOne(
-                { _id: job },
-                { deleted: false }
-            );
-            services.push(service);
-        }
+            { _id: req.params.id, deleted: false }
+        )
+            .select("-workingArea -createdBy -updatedBy -createdAt -updatedAt -deleted -__v")
+            .populate("jobs", "title")
+            .lean(); 
+        
+        helper.startDate = moment(helper.startDate).format("DD/MM/YYYY");
+        helper.birthDate = moment(helper.birthDate).format("DD/MM/YYYY");
 
         res.json({
             success: true,
-            helper: helper,
-            services: services
+            helper: helper
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        res.status(500).json({ error: 'Server error' });
     }
 }
 
@@ -198,26 +111,44 @@ module.exports.edit = async (req, res) => {
         const helper = await Helper.findOne(
             { _id: req.params.id },
             { deleted: false }
-        );
+        )
+            .select("-workingArea -createdBy -updatedBy -createdAt -updatedAt -deleted -__v")
+            .populate("jobs", "title")
+            .lean();
     
-        const locations = await Location.find({});
-        const services = await Service.find({ deleted: false });
-        const costFactors = await CostFactorType.findOne(
-            { 
+        const services = await Service.find({ deleted: false }).select("title");
+        const costFactors = await CostFactorType.aggregate([
+            {
+              $match: {
                 status: "active",
-                applyTo: "helper" 
+                applyTo: "helper"
+              }
+            },
+            {
+              $project: {
+                coefficientList: {
+                  $filter: {
+                    input: "$coefficientList",
+                    as: "item",
+                    cond: { $eq: ["$$item.status", "active"] }
+                  }
+                }
+              }
             }
-        ).select("coefficientList");
+        ]);
+
+        helper.startDate = moment(helper.startDate).format("DD/MM/YYYY");
+        helper.birthDate = moment(helper.birthDate).format("DD/MM/YYYY");
 
         res.json({
             success: true,
             helper: helper,
-            locations: locations,
             services: services,
-            coefficientList: costFactors.coefficientList
+            coefficientList: costFactors[0].coefficientList
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        console.log(error);
+        res.status(500).json({ error: 'Server error' });
     }
 }
 
@@ -233,7 +164,7 @@ module.exports.editPatch = async (req, res) => {
         if (helperIdExist) {
             res.json({
                 success: false,
-                msg: "CMND người giúp việc đã tồn tại"
+                message: "Helper id existed"
             })
             return;
         }
@@ -247,17 +178,9 @@ module.exports.editPatch = async (req, res) => {
         if (phoneExist) {
             res.json({
                 success: false,
-                msg: "Số điện thoại người giúp việc đã tồn tại"
+                message: "Phone number existed"
             })
             return;
-        }
-        
-        if (typeof(req.body.districts) === "string") {
-            req.body.districts = [req.body.districts];
-        }
-    
-        if (typeof(req.body.jobs) === "string") {
-            req.body.jobs = [req.body.jobs];
         }
     
         if (req.body.avatar) {
@@ -268,6 +191,6 @@ module.exports.editPatch = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        res.status(500).json({ error: 'Server error' });
     }
 }
