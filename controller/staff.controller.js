@@ -4,6 +4,8 @@ const Role = require("../models/role.model");
 
 // Config
 const md5 = require('md5');
+const moment = require('moment');
+const { ObjectId } = require("mongodb");
 
 // Helpers
 const { convertDateObject } = require('../helpers/convertDate.helper');
@@ -91,75 +93,6 @@ module.exports.createPost = async (req, res) => {
     }
 }
 
-// [PATCH] /admin/staffs/change-multi
-module.exports.changeMulti = async (req, res) => {
-    try {
-        const type = req.body.type;
-        const ids = req.body.ids.split(", ");
-
-        switch (type) {
-            case "active":
-                await Helper.updateMany(
-                    { _id: { $in: ids } },
-                    { status: "active"}
-                );
-                res.json({ success: true })
-                break;
-            case "inactive":
-                await Helper.updateMany(
-                    { _id: { $in: ids } },
-                    { status: "inactive"}
-                );
-                res.json({ success: true })
-                break;
-            case "delete-all":
-                await Helper.updateMany(
-                    { _id: { $in: ids } },
-                    { deleted: true }
-                );
-                res.json({ success: true })
-                break;
-            default:
-                break;
-    }
-    } catch (error) {
-        res.status(500).json({ error: 'Server error' });
-    }
-}
-
-// [PATCH] /admin/staffs/change-status/:status/:id
-module.exports.changeStatus = async (req, res) => {
-    try {
-        const status = req.params.status;
-        const id = req.params.id;
-
-        await Staff.updateOne(
-            { _id: id },
-            { status: status }
-        )
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'Server error' });   
-    }
-}
-
-// [DELETE] /admin/staffs/delete/:id
-module.exports.deleteItem = async (req, res) => {
-    try {
-        const id = req.params.id;
-
-        await Staff.updateOne(
-            { _id: id },
-            { deleted: true }
-        )
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'Server error' });   
-    }
-}
-
 // [GET] /admin/staffs/edit/:id
 module.exports.edit = async (req, res) => {
     try {
@@ -168,11 +101,16 @@ module.exports.edit = async (req, res) => {
             deleted: false
         };
     
-        const staff = await Staff.findOne(find).select("-password");
+        const staff = await Staff.findOne(find)
+                                .select("-createdBy -deleted -offDateList -updatedBy -createdAt -updatedAt -__v")
+                                .lean();
     
         const roles = await Role.find({
             deleted: false
-        });
+        }).select('title');
+
+        staff.birthDate = moment(staff.birthDate).format("DD/MM/YYYY");
+        staff.startDate = moment(staff.startDate).format("DD/MM/YYYY");
 
         res.json({
             success: true,
@@ -195,7 +133,7 @@ module.exports.editPatch = async (req, res) => {
         if (staffIdExist) {
             res.json({
                 success: false,
-                msg: 'CMND đã tồn tại'
+                msg: 'Staff id existed'
             })
             return;
         }
@@ -208,7 +146,7 @@ module.exports.editPatch = async (req, res) => {
         if (phoneExist) {
             res.json({
                 success: false,
-                msg: 'Số điện thoại đã tồn tại'
+                msg: 'Phone existed'
             })
             return;
         }
@@ -221,7 +159,7 @@ module.exports.editPatch = async (req, res) => {
         if (emailExist) {
             res.json({
                 success: false,
-                msg: 'Email đã tồn tại'
+                msg: 'Email existed'
             })
             return;
         }
@@ -232,11 +170,13 @@ module.exports.editPatch = async (req, res) => {
         else {
             delete req.body.password;
         }
+        req.body.birthDate = convertDateObject(req.body.birthDate);
     
         await Staff.updateOne({ _id: req.params.id }, req.body);
 
         res.json({ success: true });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ error: 'Server error' });   
     }
 }
@@ -249,18 +189,22 @@ module.exports.detail = async (req, res) => {
             deleted: false
         };
     
-        const staff = await Staff.findOne(find).select("-password");
+        const staff = await Staff.findOne(find)
+                                .select("-password -createdBy -deleted -updatedBy -deletedBy -offDateList -createdAt -updatedAt -__v")
+                                .lean();
     
-        staff.role = await Role.findOne({
-            _id: staff.role_id,
-            deleted: false
-        });
+        const role = await Role.findById(staff.role_id).where({ deleted: false }).select("title");
+
+        staff.birthDate = moment(staff.birthDate).format("DD/MM/YYYY");
+        staff.startDate = moment(staff.startDate).format("DD/MM/YYYY");
+        staff.role = role.title
 
         res.json({
             success: true,
             staff: staff
         })
     } catch (error) {
+        console.log(error);
         res.status(500).json({ error: 'Server error' });   
     }
 }
