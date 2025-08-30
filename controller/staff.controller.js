@@ -12,18 +12,25 @@ module.exports.index = async (req, res) => {
         let find = { deleted: false };
     
         const records = await Staff.find(find).select('staff_id fullName phone role_id avatar');
+        const newStaffList = [];
         
-        for (const record of records) {
+        for (let record of records) {
             const role = await Role.findOne({ _id: record.role_id });
-            record.role = role.title;
+            record = {
+                ...record._doc,
+                role: role.title
+            };
+           
+            newStaffList.push(record);
         }
 
         res.json({
             success: true,
-            staffs: records
+            staffs: newStaffList
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        console.log(error);
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -39,7 +46,7 @@ module.exports.create = async (req, res) => {
             roles: roles
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -76,7 +83,7 @@ module.exports.createPost = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -112,7 +119,7 @@ module.exports.changeMulti = async (req, res) => {
                 break;
     }
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        res.status(500).json({ error: 'Server error' });
     }
 }
 
@@ -129,7 +136,7 @@ module.exports.changeStatus = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -145,7 +152,7 @@ module.exports.deleteItem = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -169,7 +176,7 @@ module.exports.edit = async (req, res) => {
             roles: roles
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -226,7 +233,7 @@ module.exports.editPatch = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
@@ -250,7 +257,7 @@ module.exports.detail = async (req, res) => {
             staff: staff
         })
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });   
+        res.status(500).json({ error: 'Server error' });   
     }
 }
 
