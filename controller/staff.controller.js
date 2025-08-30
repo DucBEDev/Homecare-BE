@@ -39,7 +39,7 @@ module.exports.create = async (req, res) => {
     try {
         const roles = await Role.find({
             deleted: false
-        });
+        }).select("title");
 
         res.json({
             success: true,
