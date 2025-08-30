@@ -11,7 +11,7 @@ module.exports.index = async (req, res) => {
     try {
         let find = { deleted: false };
     
-        const records = await Staff.find(find);
+        const records = await Staff.find(find).select('staff_id fullName phone role_id avatar');
         
         for (const record of records) {
             const role = await Role.findOne({ _id: record.role_id });
