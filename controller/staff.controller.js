@@ -5,6 +5,9 @@ const Role = require("../models/role.model");
 // Config
 const md5 = require('md5');
 
+// Helpers
+const { convertDateObject } = require('../helpers/convertDate.helper');
+
 
 // [GET] /admin/staffs
 module.exports.index = async (req, res) => {
@@ -65,18 +68,19 @@ module.exports.createPost = async (req, res) => {
         if (emailExist) {
             res.json({
                 success: false,
-                msg: 'Email đã tồn tại'
+                message: 'Email existed'
             })
             return;
         }
         if (phoneExist) {
             res.json({
                 success: false,
-                msg: 'Số điện thoại đã tồn tại'
+                message: 'Phone existed'
             })
             return;
         }
         req.body.password = md5(req.body.password);
+        req.body.birthDate = convertDateObject(req.body.birthDate);
 
         const record = new Staff(req.body);
         await record.save();
