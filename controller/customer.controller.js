@@ -301,3 +301,90 @@ module.exports.checkCusExist = async (req, res) => {
         res.status(500).json({ error: "An error occurred while fetching requests" });
     }
 };
+
+// [GET] /admin/customer/detail/:cusPhone
+module.exports.customerDetail = async (req, res) => {
+    try {
+        const { cusPhone } = req.params;
+        const customer = await Customer.aggregate([
+            { $match: { phone: cusPhone } },
+            { $unwind: "$addresses" },
+          
+            // Join Province
+            {
+              $lookup: {
+                from: "locations",
+                localField: "addresses.province",
+                foreignField: "_id",
+                as: "province"
+              }
+            },
+            { $unwind: "$province" },
+          
+            // Join District
+            {
+              $lookup: {
+                from: "locations",
+                let: { districts: "$province.Districts", districtId: "$addresses.district" },
+                pipeline: [
+                  { $unwind: "$Districts" },
+                  { $match: { $expr: { $eq: ["$Districts._id", "$$districtId"] } } },
+                  { $replaceRoot: { newRoot: "$Districts" } }
+                ],
+                as: "district"
+              }
+            },
+            { $unwind: "$district" },
+          
+            // Join Ward
+            {
+              $lookup: {
+                from: "locations",
+                let: { wards: "$district.Wards", wardId: "$addresses.ward" },
+                pipeline: [
+                  { $unwind: "$Districts" },
+                  { $unwind: "$Districts.Wards" },
+                  { $match: { $expr: { $eq: ["$Districts.Wards._id", "$$wardId"] } } },
+                  { $replaceRoot: { newRoot: "$Districts.Wards" } }
+                ],
+                as: "ward"
+              }
+            },
+            { $unwind: "$ward" },
+          
+            {
+              $project: {
+                fullName: 1,
+                phone: 1,
+                points: 1,
+                addresses: {
+                  detailAddress: "$addresses.detailAddress",
+                  province: "$province.Name",
+                  district: "$district.Name",
+                  ward: "$ward.Name"
+                }
+              }
+            }
+        ]);
+
+        if (!customer) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer not found"
+            });
+        }
+
+        const cusPoints = calculateCustomerPoint(customer.points || []);
+        
+        res.json({
+            success: true,
+            customer: {
+                ...customer[0],
+                points: cusPoints
+            }
+        });
+    } catch (error) {
+        console.error("customerDetail error:", error);
+        res.status(500).json({ error: "Server error" });
+    }
+};
