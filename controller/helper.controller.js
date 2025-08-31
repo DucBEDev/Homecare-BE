@@ -10,19 +10,65 @@ const moment = require("moment");
 // [GET] /admin/helpers
 module.exports.index = async (req, res) => {
     try {
-        let find = { deleted: "false" };
+        const { status = "all", search, page = 1, limit = 10 } = req.query;
 
-        const helpers = await Helper.find(find)
-                                    .select("helper_id fullName phone avatar workingStatus");
-        
+        const matchStage = { deleted: false };
+
+        if (status !== "all") {
+            matchStage.workingStatus = status;
+        }
+
+        if (search) {
+            matchStage.$or = [
+                { helper_id: { $regex: search, $options: "i" } },
+                { fullName: { $regex: search, $options: "i" } },
+                { phone: { $regex: search, $options: "i" } }
+            ];
+        }
+
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const pipeline = [
+            { $match: matchStage },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: Number(limit) },
+            {
+                $project: {
+                    _id: 1,
+                    helper_id: 1,
+                    fullName: 1,
+                    phone: 1,
+                    avatar: 1,
+                    workingStatus: 1,
+                    gender: 1,
+                    startDate: {
+                        $dateToString: { format: "%d/%m/%Y", date: "$startDate", timezone: "Asia/Ho_Chi_Minh" }
+                    }
+                }
+            }
+        ];
+
+
+        const helpers = await Helper.aggregate(pipeline);
+
+        const totalAgg = await Helper.aggregate([
+            { $match: matchStage },
+            { $count: "total" }
+        ]);
+        const total = totalAgg[0]?.total || 0;
+
         res.json({
             success: true,
-            helpers: helpers
+            totalHelpers: total,
+            helpers
         });
     } catch (error) {
+        console.error("Helper index error:", error);
         res.status(500).json({ error: 'Server error' });
     }
-}
+};
+
 
 // [GET] /admin/helpers/create
 module.exports.create = async (req, res) => {
