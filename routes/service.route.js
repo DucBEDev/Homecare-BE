@@ -6,8 +6,8 @@ const controller = require("../controller/service.controller")
 router.get('/', controller.index);
 router.post('/create', controller.createPost);
 router.delete("/delete/:id", controller.deleteItem);
-router.get("/edit/:id", controller.edit);
-router.patch("/edit/:id", controller.editPatch);
-router.get("/detail/:id", controller.detail);
+router.get("/edit/:serviceId", controller.edit);
+router.patch("/edit/:serviceId", controller.editPatch);
+router.get("/detail/:serviceId", controller.detail);
 
 module.exports = router;
