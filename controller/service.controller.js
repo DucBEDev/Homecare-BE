@@ -6,10 +6,24 @@ const CostFactorType = require("../models/costFactorType.model");
 // [GET] /admin/services
 module.exports.index = async (req, res) => {
     try {
-        let find = { deleted: false };
+        const { search, page = 1, limit = 10 } = req.query;
 
-        const services = await Service.aggregate([
-            { $match: find },
+        const matchStage = { deleted: false };
+
+        if (search) {
+            matchStage.$or = [
+                { _id: { $regex: search, $options: "i" } },
+                { title: { $regex: search, $options: "i" } }
+            ];
+        }
+
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const pipeline = [
+            { $match: matchStage },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: Number(limit) },
             {
                 $lookup: {
                     from: "costFactorTypes",
@@ -17,29 +31,14 @@ module.exports.index = async (req, res) => {
                     pipeline: [
                         { $match: { $expr: { $eq: ["$applyTo", "service"] }, deleted: false } },
                         { $unwind: "$coefficientList" },
-                        {
-                            $addFields: {
-                                "coefficientList._id": { $toString: "$coefficientList._id" } // Chuyển _id thành string
-                            }
-                        },
-                        {
-                            $match: {
-                                $expr: { $eq: ["$coefficientList._id", "$$coefficientId"] }
-                            }
-                        },
-                        {
-                            $project: {
-                                coefficientValue: "$coefficientList.value",
-                                coefficientTitle: "$coefficientList.title"
-                            }
-                        }
+                        { $addFields: { "coefficientList._id": { $toString: "$coefficientList._id" } } },
+                        { $match: { $expr: { $eq: ["$coefficientList._id", "$$coefficientId"] } } },
+                        { $project: { coefficientValue: "$coefficientList.value", coefficientTitle: "$coefficientList.title" } }
                     ],
                     as: "coefficientData"
                 }
             },
-            {
-                $unwind: { path: "$coefficientData", preserveNullAndEmptyArrays: true }
-            },
+            { $unwind: { path: "$coefficientData", preserveNullAndEmptyArrays: true } },
             {
                 $project: {
                     _id: 1,
@@ -52,16 +51,27 @@ module.exports.index = async (req, res) => {
                     coefficientTitle: "$coefficientData.coefficientTitle"
                 }
             }
+        ];
+
+        const services = await Service.aggregate(pipeline);
+
+        const totalAgg = await Service.aggregate([
+            { $match: matchStage },
+            { $count: "total" }
         ]);
+        const total = totalAgg[0]?.total || 0;
 
         res.json({
             success: true,
-            services: services,
+            totalServices: total,
+            services
         });
     } catch (error) {
+        console.error("Service index error:", error);
         res.status(500).json({ error: 'Server error' });
     }
 };
+
 
 // [POST] /admin/services/create
 module.exports.createPost = async (req, res) => {
