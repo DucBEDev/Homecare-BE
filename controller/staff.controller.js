@@ -14,30 +14,72 @@ const { convertDateObject } = require('../helpers/convertDate.helper');
 // [GET] /admin/staffs
 module.exports.index = async (req, res) => {
     try {
-        let find = { deleted: false };
-    
-        const records = await Staff.find(find).select('staff_id fullName phone role_id avatar');
-        const newStaffList = [];
-        
-        for (let record of records) {
-            const role = await Role.findOne({ _id: record.role_id });
-            record = {
-                ...record._doc,
-                role: role.title
-            };
-           
-            newStaffList.push(record);
+        const { search, page = 1, limit = 10 } = req.query;
+
+        const matchStage = { deleted: false };
+
+        if (search) {
+            matchStage.$or = [
+                { staff_id: { $regex: search, $options: "i" } },
+                { fullName: { $regex: search, $options: "i" } },
+                { phone: { $regex: search, $options: "i" } }
+            ];
         }
+
+        const skip = (Number(page) - 1) * Number(limit);
+
+        const pipeline = [
+            { $match: matchStage },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: Number(limit) },
+            {
+                $lookup: {
+                    from: "roles",
+                    let: { roleId: "$role_id" },
+                    pipeline: [
+                        { 
+                            $match: { 
+                                $expr: { $eq: ["$_id", { $toObjectId: "$$roleId" }] } 
+                            } 
+                        },
+                        { $project: { title: 1 } }
+                    ],
+                    as: "roleData"
+                }
+            },
+            { $unwind: { path: "$roleData", preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 1,
+                    staff_id: 1,
+                    fullName: 1,
+                    phone: 1,
+                    avatar: 1,
+                    role: "$roleData.title"
+                }
+            }
+        ];
+
+        const staffs = await Staff.aggregate(pipeline);
+
+        const totalAgg = await Staff.aggregate([
+            { $match: matchStage },
+            { $count: "total" }
+        ]);
+        const total = totalAgg[0]?.total || 0;
 
         res.json({
             success: true,
-            staffs: newStaffList
-        })
+            totalStaffs: total,
+            staffs
+        });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: 'Server error' });   
+        console.error("Staff index error:", error);
+        res.status(500).json({ error: 'Server error' });
     }
-}
+};
+
 
 // [GET] /admin/staffs/create
 module.exports.create = async (req, res) => {
