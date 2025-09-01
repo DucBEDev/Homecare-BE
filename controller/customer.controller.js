@@ -199,10 +199,6 @@ module.exports.requestHistoryList = async (req, res) => {
         const records = await Request.find ( 
             { 
                 "customerInfo.phone": phone,
-                $or: [
-                    { status: "done" },
-                    { status: "cancelled" }
-                ]
             } 
         );
 
