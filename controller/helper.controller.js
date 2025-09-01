@@ -41,6 +41,7 @@ module.exports.index = async (req, res) => {
                     phone: 1,
                     avatar: 1,
                     workingStatus: 1,
+                    status: 1,
                     gender: 1,
                     startDate: {
                         $dateToString: { format: "%d/%m/%Y", date: "$startDate", timezone: "Asia/Ho_Chi_Minh" }
