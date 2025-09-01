@@ -88,32 +88,34 @@ module.exports.create = async (req, res) => {
 // [POST] /admin/helpers/create
 module.exports.createPost = async (req, res) => {
     try {
-        const helperIdExist = await Helper.findOne(
-            { 
-                helper_id: req.body.helper_id,
-                deleted: false
+        const { helper_id, phone } = req.body;
+
+        if (helper_id) {
+            const helperIdExist = await Helper.findOne({
+                helper_id,
+                deleted: false,
+                _id: { $ne: id }   
+            });
+            if (helperIdExist) {
+                return res.json({
+                    success: false,
+                    message: "Helper id existed"
+                });
             }
-        );
-        if (helperIdExist) {
-            res.json({
-                success: false,
-                message: "Helper id existed"
-            })
-            return;
         }
-    
-        const phoneExist = await Helper.findOne(
-            { 
-                phone: req.body.phone,
-                deleted: false
+
+        if (phone) {
+            const phoneExist = await Helper.findOne({
+                phone,
+                deleted: false,
+                _id: { $ne: id }   
+            });
+            if (phoneExist) {
+                return res.json({
+                    success: false,
+                    message: "Phone number existed"
+                });
             }
-        );
-        if (phoneExist) {
-            res.json({
-                success: false,
-                message: "Phone number existed"
-            })
-            return;
         }
     
         if (req.body.avatar) {
@@ -201,42 +203,46 @@ module.exports.edit = async (req, res) => {
 // [PATCH] /admin/helpers/edit/:id
 module.exports.editPatch = async (req, res) => {
     try {
-        const helperIdExist = await Helper.findOne(
-            { 
-                helper_id: req.body.helper_id,
-                deleted: false
+        const { id } = req.params;
+        const { helper_id, phone, avatar } = req.body;
+
+        if (helper_id) {
+            const helperIdExist = await Helper.findOne({
+                helper_id,
+                deleted: false,
+                _id: { $ne: id }   
+            });
+            if (helperIdExist) {
+                return res.json({
+                    success: false,
+                    message: "Helper id existed"
+                });
             }
-        );
-        if (helperIdExist) {
-            res.json({
-                success: false,
-                message: "Helper id existed"
-            })
-            return;
         }
-    
-        const phoneExist = await Helper.findOne(
-            { 
-                phone: req.body.phone,
-                deleted: false
+
+        if (phone) {
+            const phoneExist = await Helper.findOne({
+                phone,
+                deleted: false,
+                _id: { $ne: id }   
+            });
+            if (phoneExist) {
+                return res.json({
+                    success: false,
+                    message: "Phone number existed"
+                });
             }
-        );
-        if (phoneExist) {
-            res.json({
-                success: false,
-                message: "Phone number existed"
-            })
-            return;
         }
-    
-        if (req.body.avatar) {
-            req.body.avatar = req.body.avatar[0];
+
+        if (avatar && Array.isArray(avatar)) {
+            req.body.avatar = avatar[0];
         }
-    
-        await Helper.updateOne({ _id: req.params.id }, req.body);
+
+        await Helper.updateOne({ _id: id }, req.body);
 
         res.json({ success: true });
     } catch (error) {
+        console.error("Helper editPatch error:", error);
         res.status(500).json({ error: 'Server error' });
     }
-}
+};
