@@ -1,70 +1,88 @@
 // Models
 const CostFactorType = require("../models/costFactorType.model");
 
-
 // [GET] /admin/costFactors
 module.exports.index = async (req, res) => {    
     try {
-        // const pipeline = [
-        //     { $unwind: "$coefficientList" },
-        //     { $match: { "coefficientList.deleted": false } },
-        //     { 
-        //         $group: {
-        //             _id: "$_id",
-        //             applyTo: { $first: "$applyTo" },
-        //             newCoefficientList: { $push: "$coefficientList" }
-        //         }
-        //     }
-        // ];
-        
+        const { applyTo = "service", search, page = 1, limit = 10 } = req.query;
+
+        const matchStage = { deleted: false };
+
+        if (applyTo) {
+            matchStage.applyTo = applyTo;
+        }
+
+        const skip = (Number(page) - 1) * Number(limit);
+
         const pipeline = [
-            { $match: { deleted: false } },
-            {
-                $project: {
-                    _id: 1,
-                    applyTo: 1,
-                    title: 1,
-                    description: 1,
-                    status: 1,
-                    newCoefficientList: {
-                        $filter: {
-                            input: "$coefficientList",
-                            as: "coeff",
-                            cond: { $or: [{ $eq: ["$$coeff", null] }, { $eq: ["$$coeff.deleted", false] }] }
+            { $match: matchStage },
+            { $unwind: "$coefficientList" },
+            { $match: { "coefficientList.deleted": false } },
+
+            ...(search
+                ? [
+                    {
+                        $match: {
+                            $or: [
+                                { "coefficientList._id": { $regex: search, $options: "i" } },
+                                { "coefficientList.title": { $regex: search, $options: "i" } }
+                            ]
                         }
                     }
-               }
+                ]
+                : []),
+
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: Number(limit) },
+
+            {
+                $group: {
+                    _id: "$_id",
+                    title: { $first: "$title" },
+                    description: { $first: "$description" },
+                    applyTo: { $first: "$applyTo" },
+                    status: { $first: "$status" },
+                    coefficientList: { $push: "$coefficientList" }
+                }
             }
         ];
-    
+
         const costFactorLists = await CostFactorType.aggregate(pipeline);
 
-        res.json({
-            success: true,
-            costFactorLists: costFactorLists
-        })
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
+        const totalAgg = await CostFactorType.aggregate([
+            { $match: matchStage },
+            { $unwind: "$coefficientList" },
+            { $match: { "coefficientList.deleted": false } },
+            ...(search
+                ? [
+                    {
+                        $match: {
+                            $or: [
+                                { "coefficientList._id": { $regex: search, $options: "i" } },
+                                { "coefficientList.title": { $regex: search, $options: "i" } }
+                            ]
+                        }
+                    }
+                ]
+                : []),
+            { $count: "total" }
+        ]);
+        const total = totalAgg[0]?.total || 0;
 
-// [GET] /admin/costFactors/create
-module.exports.create = async (req, res) => {
-    try {
-        let find = {
-            deleted: false
-        };
-    
-        const costFactorTypes = await CostFactorType.find(find);
-        
         res.json({
             success: true,
-            costFactorTypes: costFactorTypes
-        })
+            totalCostFactors: total,
+            costFactorLists
+        });
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        console.error("CostFactorType index error:", error);
+        res.status(500).json({ 
+            success: false,
+            message: "Server error"
+        });
     }
-}
+};
 
 // [POST] /admin/costFactors/create
 module.exports.createPost = async (req, res) => {
@@ -77,7 +95,7 @@ module.exports.createPost = async (req, res) => {
         };
     
         await CostFactorType.updateOne(
-            { applyTo: req.body.applyTo }, 
+            { applyTo: "helper" }, 
             { $push: { coefficientList: coefficient } }
         );
 
@@ -90,113 +108,60 @@ module.exports.createPost = async (req, res) => {
 // [GET] /admin/costFactors/edit/:id
 module.exports.edit = async (req, res) => {
     try {
-        const record = await CostFactorType.findOne(
-            { 
-                _id: req.params.id,
-                deleted: false
-        
-            }
-        );
-        
-        const costFactorTypes = await CostFactorType.find({ deleted: false });
+        const { id } = req.params;
+
+        const record = await CostFactorType.findOne({
+            _id: id,
+            deleted: false
+        })
+        .select("-createdBy -updatedBy -createdAt -updatedAt -__v -deleted");
+
+        if (!record) {
+            return res.status(404).json({ success: false, message: 'Coefficient not found' });
+        }
 
         res.json({
             success: true,
-            record: record,
-            costFactorTypes: costFactorTypes
-        })
+            result: record,
+        });
+
     } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 }
 
 // [PATCH] /admin/costFactors/edit/:id
 module.exports.editPatch = async (req, res) => {
     try {
-        req.body.value = parseFloat(req.body.value);
+        const { id } = req.params;
+        const data = req.body;
 
-        await CostFactorType.updateOne(
-            {
-              applyTo: req.body.applyTo,
-              "coefficientList._id": req.params.id  
-            },
-            {
-              $set: {
-                "coefficientList.$": req.body  
-              }
-            }
-        );
-
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
-
-// [DELETE] /admin/costFactors/delete/:id
-module.exports.deleteItem = async (req, res) => {
-    try {
-        const id = req.params.id;
-
-        const deleted = await CostFactorType.updateOne(
-            { _id: id },
-            { deleted: true }
-        );
-
-        if (!deleted.matchedCount) {
-            const records = await CostFactorType.find({ deleted: false });
-
-            for (const record of records) {    
-                await CostFactorType.updateOne(
-                    { _id: record.id },
-                    { $set: { "coefficientList.$[element].deleted": true } },
-                    { arrayFilters: [ { "element._id": id } ] }
-                );
-            }
+        let costFactorType = await CostFactorType.findById(id);
+        if (!costFactorType) {
+            return res.status(404).json({ success: false, message: "Coefficient not found" });
         }
 
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
+        if (data.title !== undefined) costFactorType.title = data.title;
+        if (data.description !== undefined) costFactorType.description = data.description;
+        if (data.status !== undefined) costFactorType.status = data.status;
 
-// [PATCH] /admin/costFactors/change-status/:status/:id
-module.exports.changeStatus = async (req, res) => {
-    try {
-        const status = req.params.status;
-        const id = req.params.id;
-
-        const changeStatus = await CostFactorType.updateOne(
-            { _id: id },
-            { status: status }
-        );
-        if (!changeStatus.matchedCount) {
-            const records = await CostFactorType.find({ deleted: false });
-
-            for (const record of records) {    
-                await CostFactorType.updateOne(
-                    { _id: record.id },
-                    { $set: { "coefficientList.$[element].status": status } },
-                    { arrayFilters: [ { "element._id": id } ] }
-                );
-            }
+        if (Array.isArray(data.coefficientList)) {
+            data.coefficientList.forEach(item => {
+                const index = costFactorType.coefficientList.findIndex(el => el._id.toString() === item._id);
+                if (index !== -1) {
+                    Object.assign(costFactorType.coefficientList[index], item);
+                }
+            });
         }
-        
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
-    }
-}
 
-// [POST] /admin/costFactors/addType
-module.exports.addTypePost = async (req, res) => {
-    try {
-        const costFactor = new CostFactorType(req.body);
-        await costFactor.save();
+        await costFactorType.save();
 
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'An error occurred while fetching requests' });
+        res.json({
+            success: true
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Server error" });
     }
 }
