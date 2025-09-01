@@ -436,8 +436,7 @@ module.exports.detail = async (req, res) => {
                         orderDate: {
                             $dateToString: {
                                 format: "%d/%m/%Y %H:%M:%S",
-                                date: "$orderDate",
-                                timezone: "Asia/Ho_Chi_Minh"
+                                date: "$orderDate"
                             }
                         },
                         status: "$status",
@@ -454,22 +453,19 @@ module.exports.detail = async (req, res) => {
                                 workingDate: {
                                     $dateToString: {
                                         format: "%d/%m/%Y",
-                                        date: "$$rd.workingDate",
-                                        timezone: "Asia/Ho_Chi_Minh"
+                                        date: "$$rd.workingDate"
                                     }
                                 },
                                 startTime: {
                                     $dateToString: {
                                         format: "%H:%M",
-                                        date: "$$rd.startTime",
-                                        timezone: "Asia/Ho_Chi_Minh"
+                                        date: "$$rd.startTime"
                                     }
                                 },
                                 endTime: {
                                     $dateToString: {
                                         format: "%H:%M",
-                                        date: "$$rd.endTime",
-                                        timezone: "Asia/Ho_Chi_Minh"
+                                        date: "$$rd.endTime"
                                     }
                                 },
                                 status: "$$rd.status",
