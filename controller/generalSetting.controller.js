@@ -23,16 +23,12 @@ module.exports.index = async (req, res) => {
 // [PATCH] /admin/generalSettings/update
 module.exports.update = async (req, res) => {
     try {
-        if (req.body.holidayStartDate != "")
-            req.body.holidayStartDate = new Date(req.body.holidayStartDate);
-        
-        if (req.body.holidayEndDate != "")
-            req.body.holidayEndDate = new Date(req.body.holidayEndDate);
 
         await GeneralSetting.updateOne({ id: "generalSetting" }, req.body);
 
         res.json({ success: true });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ error: 'An error occurred while fetching requests' });
     }
 }
