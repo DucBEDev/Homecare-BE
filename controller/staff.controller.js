@@ -124,7 +124,7 @@ module.exports.createPost = async (req, res) => {
         }
 
         // Replace md5 with bcrypt for password hashing
-        req.body.password = await bcrypt.hash(req.body.password, 10);
+        req.body.password = await bcrypt.hash("111111", 10);
         req.body.birthDate = convertDateObject(req.body.birthDate);
 
         const record = new Staff(req.body);
@@ -206,12 +206,11 @@ module.exports.editPatch = async (req, res) => {
             })
             return;
         }
-    
-        if (req.body.password) {
+
+        const hasNewPassword = req.body.hasNewPassword;
+        if (hasNewPassword) {
             req.body.password = await bcrypt.hash(req.body.password, 10);
-        } else {
-            delete req.body.password;
-        }
+        } 
         req.body.birthDate = convertDateObject(req.body.birthDate);
     
         await Staff.updateOne({ _id: req.params.id }, req.body);
