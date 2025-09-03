@@ -3,7 +3,7 @@ const Staff = require("../models/staff.model");
 const Role = require("../models/role.model");
 
 // Config
-const md5 = require('md5');
+const bcrypt = require('bcrypt');
 const moment = require('moment');
 const { ObjectId } = require("mongodb");
 
@@ -80,7 +80,6 @@ module.exports.index = async (req, res) => {
     }
 };
 
-
 // [GET] /admin/staffs/create
 module.exports.create = async (req, res) => {
     try {
@@ -123,7 +122,9 @@ module.exports.createPost = async (req, res) => {
             })
             return;
         }
-        req.body.password = md5(req.body.password);
+
+        // Replace md5 with bcrypt for password hashing
+        req.body.password = await bcrypt.hash(req.body.password, 10);
         req.body.birthDate = convertDateObject(req.body.birthDate);
 
         const record = new Staff(req.body);
@@ -207,9 +208,8 @@ module.exports.editPatch = async (req, res) => {
         }
     
         if (req.body.password) {
-            req.body.password = md5(req.body.password);
-        }
-        else {
+            req.body.password = await bcrypt.hash(req.body.password, 10);
+        } else {
             delete req.body.password;
         }
         req.body.birthDate = convertDateObject(req.body.birthDate);

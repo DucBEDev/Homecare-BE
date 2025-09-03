@@ -5,7 +5,7 @@ const Service = require("../models/service.model");
 const CostFactorType = require("../models/costFactorType.model");
 
 const moment = require("moment");
-
+const bcrypt = require("bcrypt");
 
 // [GET] /admin/helpers
 module.exports.index = async (req, res) => {
@@ -121,6 +121,10 @@ module.exports.createPost = async (req, res) => {
         if (req.body.avatar) {
             req.body.avatar = req.body.avatar[0];
         }
+
+        const defaultPassword = "111111";
+        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+        req.body.password = hashedPassword;
         
         const newHelper = new Helper(req.body);
         await newHelper.save();
@@ -204,7 +208,7 @@ module.exports.edit = async (req, res) => {
 module.exports.editPatch = async (req, res) => {
     try {
         const { id } = req.params;
-        const { helper_id, phone, avatar } = req.body;
+        const { helper_id, phone, avatar, hasNewPassword, password } = req.body;
 
         if (helper_id) {
             const helperIdExist = await Helper.findOne({
@@ -236,6 +240,11 @@ module.exports.editPatch = async (req, res) => {
 
         if (avatar && Array.isArray(avatar)) {
             req.body.avatar = avatar[0];
+        }
+
+        if (hasNewPassword) {
+            const hashedPassword = await bcrypt.hash(password, 10);
+            req.body.password = hashedPassword;
         }
 
         await Helper.updateOne({ _id: id }, req.body);

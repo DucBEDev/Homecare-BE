@@ -10,7 +10,7 @@ const GeneralSetting = require("../models/generalSetting.model");
 
 // Libs
 const moment = require("moment");
-const md5 = require('md5');
+const bcrypt = require("bcrypt");
 
 // Helpers
 const { convertDate, convertDateObject } = require("../helpers/convertDate.helper");
@@ -307,10 +307,11 @@ module.exports.createPost = async (req, res) => {
 
         const cusExist = req.body.isCusHasAcc;
         if (!cusExist) {
+            const hashedPassword = await bcrypt.hash("111111", 10);
             const createCustomer = new Customer({
                 fullName: req.body.customerInfo.fullName,
                 phone: req.body.customerInfo.phone,
-                password: md5("111111"),
+                password: hashedPassword,
                 addresses: [
                     {
                         province: req.body.provinceCode,

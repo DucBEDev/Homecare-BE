@@ -1,18 +1,27 @@
 const Staff = require("../models/staff.model");
-
-const md5 = require("md5");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 // [POST] /admin/auth/login
 module.exports.login = async (req, res) => {
     const { hmrId, password } = req.body;
 
     try {
+        const staff = await Staff.findOne({
+            staff_id: hmrId,
+            status: "active"
+        }).select("password staff_id fullName role_id").lean();
+
+        if (!staff || !(await bcrypt.compare(password, staff.password))) {
+            return res.status(401).json({
+                message: "UserId or password is not correct!"
+            });
+        }
+
         const staffData = await Staff.aggregate([
             {
                 $match: {
                     staff_id: hmrId,
-                    password: md5(password),
                     status: "active"
                 }
             },
@@ -47,12 +56,6 @@ module.exports.login = async (req, res) => {
             },
             { $limit: 1 }
         ]);
-
-        if (!staffData.length) {
-            return res.status(401).json({
-                message: "UserId or password is not correct!"
-            });
-        }
 
         const user = staffData[0];
 
