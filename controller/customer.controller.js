@@ -122,6 +122,7 @@ module.exports.index = async (req, res) => {
                     fullName: { $first: "$fullName" },
                     phone: { $first: "$phone" },
                     createdAt: { $first: "$createdAt" },
+                    points: { $first: "$points" },
                     addresses: {
                         $push: {
                             $cond: {
@@ -159,6 +160,7 @@ module.exports.index = async (req, res) => {
                     fullName: 1,
                     phoneNumber: "$phone",
                     location: "$addresses",
+                    points: 1,
                     registerDate: {
                         $dateToString: {
                             format: "%d/%m/%Y",
@@ -170,7 +172,13 @@ module.exports.index = async (req, res) => {
             }
         ];
 
-        const data = await Customer.aggregate(pipeline);
+        let data = await Customer.aggregate(pipeline);
+
+        // Tính điểm cho từng customer
+        data = data.map(cus => ({
+            ...cus,
+            points: calculateCustomerPoint(cus.points || [])
+        }));
 
         // Count total với cùng match condition
         const totalAgg = await Customer.aggregate([
