@@ -127,7 +127,7 @@ module.exports.index = async (req, res) => {
                     orderId: { $toString: "$_id" },
                     orderDate: {
                         $dateToString: {
-                            format: "%d/%m/%Y",
+                            format: "%d/%m/%Y %H:%M:%S",
                             date: "$orderDate",
                             timezone: "Asia/Ho_Chi_Minh"
                         }
@@ -259,8 +259,9 @@ module.exports.createPost = async (req, res) => {
         const coefficient_other = parseFloat(req.body.coefficient_other);
         const coefficient_ot = parseFloat(req.body.coefficient_ot);
 
-        req.body.startTime = moment(`${convertDate(req.body.startDate)} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').toDate();
-        req.body.endTime = moment(`${convertDate(req.body.endDate)} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').toDate();
+        // Subtract 7 hours from start and end times before saving to database
+        req.body.startTime = moment(`${convertDate(req.body.startDate)} ${req.body.startTime}`, 'YYYY-MM-DD HH:mm').subtract(7, 'hours').toDate();
+        req.body.endTime = moment(`${convertDate(req.body.endDate)} ${req.body.endTime}`, 'YYYY-MM-DD HH:mm').subtract(7, 'hours').toDate();
 
         req.body.totalCost = parseInt(req.body.totalCost);
         
@@ -460,13 +461,13 @@ module.exports.detail = async (req, res) => {
                                 startTime: {
                                     $dateToString: {
                                         format: "%H:%M",
-                                        date: "$$rd.startTime"
+                                        date: { $add: ["$$rd.startTime", 7 * 60 * 60 * 1000] }
                                     }
                                 },
                                 endTime: {
                                     $dateToString: {
                                         format: "%H:%M",
-                                        date: "$$rd.endTime"
+                                        date: { $add: ["$$rd.endTime", 7 * 60 * 60 * 1000] }
                                     }
                                 },
                                 status: "$$rd.status",
