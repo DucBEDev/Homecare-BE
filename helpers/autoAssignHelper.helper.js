@@ -8,7 +8,7 @@ const Request = require('../models/request.model');
 const { helperBilling } = require('./helperBilling.helper');
 
 
-cron.schedule('*/5 * * * *', async () => {
+cron.schedule('*/1 * * * *', async () => {
     console.log(`[${moment().format('HH:mm:ss')}] Đang quét đơn để gán helper...`);
 
     try {
