@@ -127,7 +127,7 @@ module.exports.index = async (req, res) => {
                     orderId: { $toString: "$_id" },
                     orderDate: {
                         $dateToString: {
-                            format: "%d/%m/%Y %H:%M:%S",
+                            format: "%d/%m/%Y",
                             date: "$orderDate",
                             timezone: "Asia/Ho_Chi_Minh"
                         }
