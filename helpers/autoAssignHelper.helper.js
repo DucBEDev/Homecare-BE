@@ -28,7 +28,7 @@ cron.schedule('*/1 * * * *', async () => {
 
         for (const detail of requestDetails) {
             const request = await Request.findOne({ scheduleIds: detail._id.toString() }).select("service scheduleIds");
-
+            console.log(request);
             if (moment.utc(detail.startTime).diff(now, "minutes") < 30) {
                 await RequestDetail.updateOne(
                     { _id: detail._id },
