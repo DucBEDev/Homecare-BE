@@ -473,7 +473,8 @@ module.exports.detail = async (req, res) => {
                                 status: "$$rd.status",
                                 cost: "$$rd.cost",
                                 helper_cost: "$$rd.helper_cost",
-                                helper: "$$rd.helper"
+                                helper: "$$rd.helper",
+                                comment: "$$rd.comment"
                             }
                         }
                     }
@@ -572,9 +573,19 @@ module.exports.changeStatus = async (req, res) => {
                 { $set: { status: status } }
             );
         } else if (type === 'requestDetail') {
+            let updateData = { status: status };
+
+            if (status === 'completed' && req.body.comment) {
+                updateData.comment = {
+                    review: req.body.comment.review || '',
+                    loseThings: req.body.comment.loseThings || false,
+                    breakThings: req.body.comment.breakThings || false
+                };
+            }
+
             const updatedDetail = await RequestDetail.findByIdAndUpdate(
                 id,
-                { $set: { status: status } },
+                { $set: updateData },
                 { new: true } // return new document after proceeding update
             );
 

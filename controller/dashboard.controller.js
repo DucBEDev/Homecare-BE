@@ -5,7 +5,7 @@ const RequestDetail = require("../models/requestDetail.model");
 
 const { convertDateObject } = require("../helpers/convertDate.helper");
 
-// [GET /admin/dashboard
+// [GET] /admin/dashboard
 module.exports.dashboard = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
@@ -78,14 +78,54 @@ module.exports.dashboard = async (req, res) => {
 
         // ---------- 5. Top 5 Helpers ----------
         const topHelpers = await RequestDetail.aggregate([
-            { $match: { status: "completed", ...(startDate && endDate ? { workingDate: matchDate } : {}) } },
-            { $group: { _id: "$helper_id", totalOrders: { $sum: 1 } } },
+            { 
+                $match: { 
+                    status: "completed", 
+                    helper_id: { $ne: "notAvailable" }, 
+                    ...(startDate && endDate ? { workingDate: matchDate } : {}) 
+                } 
+            },
+            { 
+                $group: { 
+                    _id: "$helper_id", 
+                    totalOrders: { $sum: 1 } 
+                } 
+            },
             { $sort: { totalOrders: -1 } },
             { $limit: 5 },
-            { $addFields: { helperObjectId: { $toObjectId: "$_id" } } },
-            { $lookup: { from: "helpers", localField: "helperObjectId", foreignField: "_id", as: "helperInfo" } },
+            {
+                $addFields: {
+                    helperObjectId: {
+                        $cond: [
+                            { $regexMatch: { input: "$_id", regex: /^[0-9a-fA-F]{24}$/ } },
+                            { $toObjectId: "$_id" },
+                            null
+                        ]
+                    }
+                }
+            },
+            {
+                $match: {
+                    helperObjectId: { $ne: null }
+                }
+            },
+            { 
+                $lookup: { 
+                    from: "helpers", 
+                    localField: "helperObjectId", 
+                    foreignField: "_id", 
+                    as: "helperInfo" 
+                } 
+            },
             { $unwind: "$helperInfo" },
-            { $project: { helperId: "$_id", totalOrders: 1, fullName: "$helperInfo.fullName", phone: "$helperInfo.phone" } },
+            { 
+                $project: { 
+                    helperId: "$_id", 
+                    totalOrders: 1, 
+                    fullName: "$helperInfo.fullName", 
+                    phone: "$helperInfo.phone" 
+                } 
+            },
         ]);
 
         // ---------- 6. Revenue Breakdown by Service ----------
