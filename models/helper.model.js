@@ -15,14 +15,7 @@ const helperSchema = new mongoose.Schema({
     birthDate: Date,
     phone: String,
     birthPlace: String,
-    address: String,
-    workingArea: {
-        province: String,
-        districts: {
-            type: Array,
-            default: []
-        }
-    },  
+    address: String,  
     jobs: [
         {
             type: mongoose.Schema.Types.ObjectId,
