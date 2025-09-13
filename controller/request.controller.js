@@ -273,11 +273,18 @@ module.exports.createPost = async (req, res) => {
             cost: serviceBasePrice 
         };
         req.body.service = service;
+
+        // Format request type
+        if (req.body.requestType === 'shortTerm') {
+            req.body.requestType = 'Ngắn hạn';
+        } else {
+            req.body.requestType = 'Dài hạn';
+        }
         
         let customerInfo = {
             fullName: req.body.fullName,
             phone: req.body.phone,
-            address: `${req.body.address}, ${req.body.ward}, ${req.body.district}, ${req.body.province}`,
+            address: `${req.body.address}, ${req.body.ward}, ${req.body.province}`,
             usedPoint: Math.floor(req.body.totalCost * 1 / 100)
         }
         req.body.customerInfo = customerInfo;
@@ -316,7 +323,6 @@ module.exports.createPost = async (req, res) => {
                 addresses: [
                     {
                         province: req.body.provinceCode,
-                        district: req.body.districtCode,
                         ward: req.body.wardCode,
                         detailAddress: req.body.address
                     }

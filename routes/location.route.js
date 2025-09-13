@@ -5,7 +5,6 @@ const controller = require("../controller/location.controller");
 const validate = require("../validates/location.validate");
 
 router.get("/province", controller.getProvinces);
-router.get("/district/:provinceId", controller.getDistrictsByProvince);
-router.get("/ward/:provinceId/:districtId", controller.getWardsByDistrict);
+router.get("/ward/:provinceId", controller.getWardsByProvince);
 
 module.exports = router;

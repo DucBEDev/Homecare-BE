@@ -65,51 +65,57 @@ module.exports.index = async (req, res) => {
                 }
             },
 
+            {
+                $addFields: {
+                    "addresses.provinceObjId": {
+                        $cond: [
+                            { $and: [
+                                { $ne: ["$addresses.province", null] },
+                                { $ne: ["$addresses.province", ""] }
+                            ]},
+                            { $toObjectId: "$addresses.province" },
+                            null
+                        ]
+                    },
+                    "addresses.wardObjId": {
+                        $cond: [
+                            { $and: [
+                                { $ne: ["$addresses.ward", null] },
+                                { $ne: ["$addresses.ward", ""] }
+                            ]},
+                            { $toObjectId: "$addresses.ward" },
+                            null
+                        ]
+                    }
+                }
+            },
+
             // Lookup provinces
             {
                 $lookup: {
                     from: "locations",
-                    localField: "addresses.province",
+                    localField: "addresses.provinceObjId",
                     foreignField: "_id",
                     as: "provinceData",
                     pipeline: [
-                        { $project: { Name: 1 } }
+                        { $project: { name: 1 } }
                     ]
                 }
             },
 
-            // Lookup districts
+            // Lookup ward
             {
                 $lookup: {
                     from: "locations",
-                    let: { districtId: "$addresses.district" },
+                    let: { wardId: "$addresses.wardObjId" },
                     pipeline: [
-                        { $unwind: "$Districts" },
+                        { $unwind: "$wards" },
                         {
                             $match: {
-                                $expr: { $eq: ["$Districts._id", "$$districtId"] }
+                                $expr: { $eq: ["$wards._id", "$$wardId"] }
                             }
                         },
-                        { $project: { "Districts.Name": 1 } }
-                    ],
-                    as: "districtData"
-                }
-            },
-
-            // Lookup wards
-            {
-                $lookup: {
-                    from: "locations",
-                    let: { wardId: "$addresses.ward" },
-                    pipeline: [
-                        { $unwind: "$Districts" },
-                        { $unwind: "$Districts.Wards" },
-                        {
-                            $match: {
-                                $expr: { $eq: ["$Districts.Wards._id", "$$wardId"] }
-                            }
-                        },
-                        { $project: { "Districts.Wards.Name": 1 } }
+                        { $project: { "wards.name": 1 } }
                     ],
                     as: "wardData"
                 }
@@ -128,9 +134,8 @@ module.exports.index = async (req, res) => {
                             $cond: {
                                 if: { $ne: ["$addresses", null] },
                                 then: {
-                                    province: { $first: "$provinceData.Name" },
-                                    district: { $first: "$districtData.Districts.Name" },
-                                    ward: { $first: "$wardData.Districts.Wards.Name" },
+                                    province: { $arrayElemAt: ["$provinceData.name", 0] },
+                                    ward: { $arrayElemAt: ["$wardData.wards.name", 0] },
                                     detailAddress: "$addresses.detailAddress"
                                 },
                                 else: null
@@ -241,7 +246,6 @@ module.exports.checkCusExist = async (req, res) => {
         const locationIds = new Set();
         customer.addresses?.forEach(addr => {
             if (addr.province) locationIds.add(addr.province.toString());
-            if (addr.district) locationIds.add(addr.district.toString());
             if (addr.ward) locationIds.add(addr.ward.toString());
         });
 
@@ -249,25 +253,19 @@ module.exports.checkCusExist = async (req, res) => {
         const locations = await Location.find({
             $or: [
                 { _id: { $in: Array.from(locationIds) } },
-                { "Districts._id": { $in: Array.from(locationIds) } },
-                { "Districts.Wards._id": { $in: Array.from(locationIds) } }
+                { "wards._id": { $in: Array.from(locationIds) } },
             ]
-        }).select("_id Name Districts");
+        }).select("_id name wards");
 
         // Create lookup maps for fast access
         const provinceMap = new Map();
-        const districtMap = new Map();
         const wardMap = new Map();
 
         locations.forEach(province => {
-            provinceMap.set(province._id.toString(), province.Name);
-            
-            province.Districts?.forEach(district => {
-                districtMap.set(district._id.toString(), district.Name);
-                
-                district.Wards?.forEach(ward => {
-                    wardMap.set(ward._id.toString(), ward.Name);
-                });
+            provinceMap.set(province._id.toString(), province.name);
+
+            province.wards?.forEach(ward => {
+                wardMap.set(ward._id.toString(), ward.name);
             });
         });
 
@@ -275,8 +273,6 @@ module.exports.checkCusExist = async (req, res) => {
         const addresses = customer.addresses?.map(addr => ({
             province: provinceMap.get(addr.province?.toString()) || addr.province,
             provinceId: addr.province,
-            district: districtMap.get(addr.district?.toString()) || addr.district,
-            districtId: addr.district,
             ward: wardMap.get(addr.ward?.toString()) || addr.ward,
             wardId: addr.ward,
             detailAddress: addr.detailAddress
@@ -310,67 +306,10 @@ module.exports.checkCusExist = async (req, res) => {
 module.exports.customerDetail = async (req, res) => {
     try {
         const { cusPhone } = req.params;
-        const customer = await Customer.aggregate([
-            { $match: { phone: cusPhone } },
-            { $unwind: "$addresses" },
-          
-            // Join Province
-            {
-              $lookup: {
-                from: "locations",
-                localField: "addresses.province",
-                foreignField: "_id",
-                as: "province"
-              }
-            },
-            { $unwind: "$province" },
-          
-            // Join District
-            {
-              $lookup: {
-                from: "locations",
-                let: { districts: "$province.Districts", districtId: "$addresses.district" },
-                pipeline: [
-                  { $unwind: "$Districts" },
-                  { $match: { $expr: { $eq: ["$Districts._id", "$$districtId"] } } },
-                  { $replaceRoot: { newRoot: "$Districts" } }
-                ],
-                as: "district"
-              }
-            },
-            { $unwind: "$district" },
-          
-            // Join Ward
-            {
-              $lookup: {
-                from: "locations",
-                let: { wards: "$district.Wards", wardId: "$addresses.ward" },
-                pipeline: [
-                  { $unwind: "$Districts" },
-                  { $unwind: "$Districts.Wards" },
-                  { $match: { $expr: { $eq: ["$Districts.Wards._id", "$$wardId"] } } },
-                  { $replaceRoot: { newRoot: "$Districts.Wards" } }
-                ],
-                as: "ward"
-              }
-            },
-            { $unwind: "$ward" },
-          
-            {
-              $project: {
-                fullName: 1,
-                phone: 1,
-                points: 1,
-                addresses: {
-                  detailAddress: "$addresses.detailAddress",
-                  province: "$province.Name",
-                  district: "$district.Name",
-                  ward: "$ward.Name"
-                }
-              }
-            }
-        ]);
-
+        
+        // Get customer data first
+        const customer = await Customer.findOne({ phone: cusPhone });
+        
         if (!customer) {
             return res.status(404).json({
                 success: false,
@@ -378,13 +317,56 @@ module.exports.customerDetail = async (req, res) => {
             });
         }
 
+        // Process addresses if they exist
+        let processedAddresses = [];
+        
+        if (customer.addresses && customer.addresses.length > 0) {
+            // Collect all location IDs
+            const provinceIds = [];
+            const wardIds = [];
+            
+            customer.addresses.forEach(addr => {
+                if (addr.province) provinceIds.push(addr.province);
+                if (addr.ward) wardIds.push(addr.ward);
+            });
+
+            // Get provinces
+            const provinces = await Location.find({
+                _id: { $in: provinceIds }
+            }).select("_id name wards");
+
+            // Create maps for quick lookup
+            const provinceMap = new Map();
+            const wardMap = new Map();
+
+            provinces.forEach(province => {
+                provinceMap.set(province._id.toString(), province.name);
+                
+                if (province.wards) {
+                    province.wards.forEach(ward => {
+                        wardMap.set(ward._id.toString(), ward.name);
+                    });
+                }
+            });
+
+            // Process addresses
+            processedAddresses = customer.addresses.map(addr => ({
+                province: provinceMap.get(addr.province?.toString()) || addr.province,
+                ward: wardMap.get(addr.ward?.toString()) || addr.ward,
+                detailAddress: addr.detailAddress
+            }));
+        }
+
         const cusPoints = calculateCustomerPoint(customer.points || []);
         
         res.json({
             success: true,
             customer: {
-                ...customer[0],
-                points: cusPoints
+                _id: customer._id,
+                fullName: customer.fullName,
+                phone: customer.phone,
+                points: cusPoints,
+                addresses: processedAddresses[processedAddresses.length - 1] || {}
             }
         });
     } catch (error) {
