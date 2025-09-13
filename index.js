@@ -1,44 +1,84 @@
-// Connect to env
+// Load biến môi trường
 require("dotenv").config();
 
-// Connect to ExpressJS
-const express = require('express');
+// ExpressJS setup
+const express = require("express");
 const app = express();
-const port = process.env.PORT;
+const port = process.env.PORT || 4000;
 
-// Parse JSON bodies (as sent by API clients)
+// HTTP server (cần để attach Socket.IO)
+const http = require("http");
+const server = http.createServer(app);
+
+// Socket.IO setup
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    credentials: true,
+  },
+});
+
+// Parse JSON body
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Config CORS to connect FE and BE
-const cors = require('cors');
+// CORS
+const cors = require("cors");
 app.use(cors({
-    origin: ['https://admin.homekare.site', 'https://home-care-fe.vercel.app', 'http://localhost:3000'],
-    credentials: true
+  origin: "*",
+  credentials: true,
 }));
 
-// Connect to mongoose DB
-const database = require("./config/database")
+// Kết nối MongoDB
+const database = require("./config/database");
+const mongoose = require("mongoose");
+
 database.connect();
 
-// Library to handle Date-Time
+// Lấy mongoose connection để tạo change stream
+const db = mongoose.connection;
+db.once("open", () => {
+  const requests = db.collection("requests");
+  const changeStream = requests.watch();
+
+  changeStream.on("change", (change) => {
+    if (change.operationType === "insert") {
+      const newRequest = change.fullDocument;
+      console.log("New requests:", newRequest);
+
+      io.emit("request", newRequest);
+    }
+  });
+});
+
+// Date-time lib
 const moment = require("moment");
 app.locals.moment = moment;
 
-// Session và Cookie config
+// Session + Cookie
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
 
 app.use(cookieParser("keyboard cat"));
-app.use(session({ cookie: { maxAge: 60000}}));
+app.use(session({ cookie: { maxAge: 60000 } }));
 
-// Connect to routes
-const routeAdmin = require('./routes/index.route')
+// Routes
+const routeAdmin = require("./routes/index.route");
 routeAdmin(app);
 
 // Cron jobs
-require('./helpers/autoAssignHelper.helper');
+require("./helpers/autoAssignHelper.helper");
 
-app.listen(port, () => {
-    console.log(`App listening on port ${port}`);
+// Socket.IO connection log
+io.on("connection", (socket) => {
+  console.log("Admin FE connected:", socket.id);
+  socket.on("disconnect", () => {
+    console.log("Admin FE disconnected:", socket.id);
+  });
+});
+
+// Start server
+server.listen(port, () => {
+  console.log(`App listening on port ${port}`);
 });
