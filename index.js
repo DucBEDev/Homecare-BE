@@ -14,7 +14,11 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: [
+      "https://admin.homekare.site",      
+      "https://home-care-fe.vercel.app", 
+      "http://localhost:3000"            
+    ],
     credentials: true,
   },
 });
@@ -26,7 +30,11 @@ app.use(express.urlencoded({ extended: false }));
 // CORS
 const cors = require("cors");
 app.use(cors({
-  origin: "*",
+  origin: [
+    "https://admin.homekare.site",      
+    "https://home-care-fe.vercel.app", 
+    "http://localhost:3000"            
+  ],
   credentials: true,
 }));
 
