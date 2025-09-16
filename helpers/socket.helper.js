@@ -71,14 +71,14 @@ const setupSocketChangeStreams = (io) => {
                 const updatedFields = change.updateDescription.updatedFields;
                 
                 if (updatedFields.status) {
-                    console.log("Order status changed:", {
-                        order_id: change.documentKey._id,
+                    console.log("request status changed:", {
+                        request_id: change.documentKey._id,
                         newStatus: updatedFields.status
                     });
-                    
-                    // Emit thay đổi trạng thái order cho Admin FE
-                    io.emit("order_status_changed", {
-                        order_id: change.documentKey._id,
+
+                    // Emit thay đổi trạng thái request cho Admin FE
+                    io.emit("request_status_changed", {
+                        request_id: change.documentKey._id,
                         status: updatedFields.status,
                         timestamp: new Date()
                     });
