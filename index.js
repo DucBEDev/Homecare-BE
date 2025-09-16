@@ -44,21 +44,11 @@ const mongoose = require("mongoose");
 
 database.connect();
 
-// Lấy mongoose connection để tạo change stream
-const db = mongoose.connection;
-db.once("open", () => {
-  const requests = db.collection("requests");
-  const changeStream = requests.watch();
+// Socket helper
+const { initializeSocket } = require("./helpers/socket.helper");
 
-  changeStream.on("change", (change) => {
-    if (change.operationType === "insert") {
-      const newRequest = change.fullDocument;
-      console.log("New requests:", newRequest);
-
-      io.emit("request", newRequest);
-    }
-  });
-});
+// Khởi tạo socket change streams sau khi kết nối database
+initializeSocket(io);
 
 // Date-time lib
 const moment = require("moment");
@@ -77,14 +67,6 @@ routeAdmin(app);
 
 // Cron jobs
 require("./helpers/autoAssignHelper.helper");
-
-// Socket.IO connection log
-io.on("connection", (socket) => {
-  console.log("Admin FE connected:", socket.id);
-  socket.on("disconnect", () => {
-    console.log("Admin FE disconnected:", socket.id);
-  });
-});
 
 // Start server
 server.listen(port, () => {
