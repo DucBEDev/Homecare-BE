@@ -18,6 +18,7 @@ const authRoutes = require("./auth.route");
 const policyRoutes = require("./policy.route");
 const questionRoutes = require("./question.route");
 const exportRoutes = require("./export.route");
+const chatRoutes = require("./chat.route");
 
 module.exports = (app) => {
     const PATH_ADMIN = systemConfig.prefixAdmin;
@@ -38,4 +39,5 @@ module.exports = (app) => {
     app.use(PATH_ADMIN + '/policies', policyRoutes);
     app.use(PATH_ADMIN + '/questions', questionRoutes);
     app.use(PATH_ADMIN + '/exports', exportRoutes);
+    app.use(PATH_ADMIN + '/chats', chatRoutes);
 }

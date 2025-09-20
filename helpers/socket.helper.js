@@ -1,5 +1,295 @@
 const mongoose = require("mongoose");
 const { ObjectId } = require("mongodb");
+const Message = require('../models/message.model');
+const Conversation = require('../models/conversation.model');
+const Staff = require('../models/staff.model');
+const Customer = require('../models/customer.model');
+const Helper = require('../models/helper.model');
+
+// Store connected users for chat
+const connectedChatUsers = new Map();
+
+// Helper function để populate sender info cho chat
+const populateSenderInfo = async (senderId, senderType) => {
+    try {
+        let senderInfo = null;
+        if (senderType === 'staff') {
+            const staff = await Staff.findById(senderId).select('fullName avatar -_id');
+            if (staff) {
+                senderInfo = {
+                    fullName: staff.fullName,
+                    avatar: staff.avatar,
+                };
+            }
+        } else if (senderType === 'customer') {
+            const customer = await Customer.findById(senderId).select('fullName avatar -_id');
+            if (customer) {
+                senderInfo = {
+                    fullName: customer.fullName,
+                    avatar: customer.avatar,
+                };
+            }
+        } else if (senderType === 'helper') {
+            const helper = await Helper.findById(senderId).select('fullName avatar -_id');
+            if (helper) {
+                senderInfo = {
+                    fullName: helper.fullName,
+                    avatar: helper.avatar,
+                };
+            }
+        }
+        return senderInfo;
+    } catch (error) {
+        console.log(`Error populating sender ${senderType}:`, error);
+        return null;
+    }
+};
+
+/**
+ * Setup chat change streams để theo dõi thay đổi trong chat collections
+ * @param {Object} io - Socket.IO instance
+ */
+const setupChatChangeStreams = (io) => {
+    const db = mongoose.connection;
+    
+    // Theo dõi tin nhắn mới
+    const messages = db.collection("messages");
+    const messagesChangeStream = messages.watch();
+
+    messagesChangeStream.on("change", async (change) => {
+        if (change.operationType === "insert") {
+            const newMessage = change.fullDocument;
+            console.log("New message:", newMessage);
+            
+            // Populate sender info
+            const senderInfo = await populateSenderInfo(newMessage.senderId, newMessage.senderType);
+            
+            const messageWithSender = {
+                ...newMessage,
+                senderInfo
+            };
+
+            // Emit tin nhắn mới cho conversation room
+            io.to(`conversation_${newMessage.conversationId}`).emit('new_message', messageWithSender);
+            
+            // Emit notification cho participants không ở trong conversation room
+            try {
+                const conversation = await Conversation.findById(newMessage.conversationId);
+                if (conversation) {
+                    conversation.participants.forEach(participant => {
+                        if (participant.id !== newMessage.senderId) {
+                            io.to(`user_${participant.id}`).emit('conversation_updated', {
+                                conversationId: newMessage.conversationId,
+                                lastMessage: newMessage.content,
+                                lastUpdated: newMessage.createdAt
+                            });
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error notifying participants:', error);
+            }
+        }
+    });
+
+    // Theo dõi thay đổi status tin nhắn
+    const messageStatusChangeStream = messages.watch([
+        {
+            $match: {
+                "operationType": "update",
+                "updateDescription.updatedFields.status": { $exists: true }
+            }
+        }
+    ]);
+
+    messageStatusChangeStream.on("change", (change) => {
+        if (change.operationType === "update") {
+            const updatedFields = change.updateDescription.updatedFields;
+            
+            if (updatedFields.status) {
+                console.log("Message status changed:", {
+                    message_id: change.documentKey._id,
+                    newStatus: updatedFields.status
+                });
+                
+                // Emit thay đổi status cho conversation room
+                io.emit("message_status_updated", {
+                    messageId: change.documentKey._id,
+                    status: updatedFields.status
+                });
+            }
+        }
+    });
+
+    // Theo dõi thay đổi lastMessage trong conversation
+    const conversations = db.collection("conversations");
+    const conversationChangeStream = conversations.watch([
+        {
+            $match: {
+                "operationType": "update",
+                $or: [
+                    { "updateDescription.updatedFields.lastMessage": { $exists: true } },
+                    { "updateDescription.updatedFields.lastUpdated": { $exists: true } }
+                ]
+            }
+        }
+    ]);
+
+    conversationChangeStream.on("change", (change) => {
+        if (change.operationType === "update") {
+            const updatedFields = change.updateDescription.updatedFields;
+            
+            console.log("Conversation updated:", {
+                conversation_id: change.documentKey._id,
+                updatedFields
+            });
+            
+            // Emit conversation update
+            io.emit("conversation_updated", {
+                conversationId: change.documentKey._id,
+                ...updatedFields,
+                timestamp: new Date()
+            });
+        }
+    });
+
+    // Handle lỗi cho chat change streams
+    messagesChangeStream.on("error", (error) => {
+        console.error("Messages change stream error:", error);
+    });
+
+    messageStatusChangeStream.on("error", (error) => {
+        console.error("Message status change stream error:", error);
+    });
+
+    conversationChangeStream.on("error", (error) => {
+        console.error("Conversation change stream error:", error);
+    });
+
+    console.log("Chat change streams setup completed!");
+};
+
+/**
+ * Setup chat socket handlers
+ * @param {Object} io - Socket.IO instance
+ */
+const setupChatSocketHandlers = (io) => {
+    io.on('connection', (socket) => {
+        
+        // Chat user join
+        socket.on('chat_user_join', (userData) => {
+            const { userId, userType } = userData;
+            connectedChatUsers.set(socket.id, { userId, userType, socketId: socket.id });
+            console.log(`Chat user ${userId} (${userType}) joined`);
+            
+            // Join user to their personal room
+            socket.join(`user_${userId}`);
+            
+            // Emit online status to others
+            socket.broadcast.emit('user_online', { userId, userType });
+        });
+
+        // Join conversation room
+        socket.on('join_conversation', (conversationId) => {
+            socket.join(`conversation_${conversationId}`);
+            console.log(`Socket ${socket.id} joined conversation ${conversationId}`);
+        });
+
+        // Leave conversation room
+        socket.on('leave_conversation', (conversationId) => {
+            socket.leave(`conversation_${conversationId}`);
+            console.log(`Socket ${socket.id} left conversation ${conversationId}`);
+        });
+
+        // Typing indicators
+        socket.on('typing_start', (data) => {
+            const { conversationId, userId, userType } = data;
+            socket.to(`conversation_${conversationId}`).emit('user_typing', { 
+                userId, 
+                userType,
+                isTyping: true 
+            });
+        });
+
+        socket.on('typing_stop', (data) => {
+            const { conversationId, userId, userType } = data;
+            socket.to(`conversation_${conversationId}`).emit('user_typing', { 
+                userId, 
+                userType,
+                isTyping: false 
+            });
+        });
+
+        // Mark messages as read
+        socket.on('mark_messages_read', async (data) => {
+            try {
+                const { conversationId, userId } = data;
+
+                await Message.updateMany(
+                    { 
+                        conversationId, 
+                        senderId: { $ne: userId },
+                        status: { $ne: 'read' }
+                    },
+                    { status: 'read' }
+                );
+
+                // Emit read status to conversation
+                io.to(`conversation_${conversationId}`).emit('messages_read', {
+                    conversationId,
+                    readBy: userId
+                });
+
+                console.log(`Messages marked as read by ${userId} in conversation ${conversationId}`);
+            } catch (error) {
+                console.error('Error marking messages as read:', error);
+                socket.emit('chat_error', { message: 'Failed to mark messages as read' });
+            }
+        });
+
+        // Message status update
+        socket.on('update_message_status', async (data) => {
+            try {
+                const { messageId, status } = data;
+
+                await Message.findByIdAndUpdate(messageId, { status }, { new: true });
+
+                // Emit status update to conversation
+                io.to(`conversation_${conversationId}`).emit('message_status_updated', {
+                    messageId,
+                    status
+                });
+
+                console.log(`Message ${messageId} status updated to ${status}`);
+            } catch (error) {
+                console.error('Error updating message status:', error);
+                socket.emit('chat_error', { message: 'Failed to update message status' });
+            }
+        });
+
+        // Get online chat users
+        socket.on('get_online_chat_users', () => {
+            const onlineChatUsers = Array.from(connectedChatUsers.values()).map(user => ({
+                userId: user.userId,
+                userType: user.userType
+            }));
+            socket.emit('online_chat_users', onlineChatUsers);
+        });
+
+        // Handle chat user disconnect
+        socket.on('chat_user_disconnect', () => {
+            const userData = connectedChatUsers.get(socket.id);
+            if (userData) {
+                const { userId, userType } = userData;
+                connectedChatUsers.delete(socket.id);
+                
+                // Emit offline status
+                socket.broadcast.emit('user_offline', { userId, userType });
+                console.log(`Chat user ${userId} (${userType}) disconnected`);
+            }
+        });
+    });
+};
 
 /**
  * Setup socket change streams để theo dõi thay đổi trong database
@@ -158,6 +448,9 @@ const setupSocketChangeStreams = (io) => {
         });
 
         console.log("All change streams setup completed!");
+        
+        // Setup chat change streams
+        setupChatChangeStreams(io);
     });
 };
 
@@ -181,9 +474,23 @@ const setupSocketConnections = (io) => {
         });
 
         socket.on("disconnect", () => {
+            // Handle chat user disconnect
+            const userData = connectedChatUsers.get(socket.id);
+            if (userData) {
+                const { userId, userType } = userData;
+                connectedChatUsers.delete(socket.id);
+                
+                // Emit offline status
+                socket.broadcast.emit('user_offline', { userId, userType });
+                console.log(`Chat user ${userId} (${userType}) disconnected`);
+            }
+            
             console.log("Admin FE disconnected:", socket.id);
         });
     });
+    
+    // Setup chat socket handlers
+    setupChatSocketHandlers(io);
 };
 
 /**
@@ -198,5 +505,8 @@ const initializeSocket = (io) => {
 module.exports = {
     initializeSocket,
     setupSocketChangeStreams,
-    setupSocketConnections
+    setupSocketConnections,
+    setupChatChangeStreams,
+    setupChatSocketHandlers,
+    connectedChatUsers
 };
