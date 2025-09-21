@@ -10,7 +10,7 @@ module.exports.login = async (req, res) => {
         const staff = await Staff.findOne({
             staff_id: hmrId,
             status: "active"
-        }).select("password staff_id fullName role_id").lean();
+        }).select("password staff_id fullName role_id _id").lean();
 
         if (!staff || !(await bcrypt.compare(password, staff.password))) {
             return res.status(401).json({
@@ -46,7 +46,7 @@ module.exports.login = async (req, res) => {
             },
             {
                 $project: {
-                    _id: 0,
+                    _id: 1,
                     staff_id: 1,
                     fullName: 1,
                     role_id: 1,
@@ -61,6 +61,7 @@ module.exports.login = async (req, res) => {
 
         const token = jwt.sign(
             {
+                _id: user._id,
                 staff_id: user.staff_id,
                 fullName: user.fullName,
                 role: user.roleTitle,
@@ -80,7 +81,8 @@ module.exports.login = async (req, res) => {
             success: true,
             fullName: user.fullName,
             role: user.roleTitle,
-            permissionList: user.rolePermissions
+            permissionList: user.rolePermissions,
+            _id: user._id
         });
     } catch (err) {
         console.error(err);

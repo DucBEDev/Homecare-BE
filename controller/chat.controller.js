@@ -58,6 +58,7 @@ const populateParticipants = async (conversations) => {
 module.exports.getCreateConversation = async (req, res) => {
     try {
         const staffId = req.query.staffId;
+        console.log(staffId);
         const conversations = await Conversation.find({
             'participants.id': staffId,
             conversationType: 'staff'

@@ -59,6 +59,7 @@ cron.schedule('*/1 * * * *', async () => {
                 const helper = await Helper.findOne({ workingStatus: "online", status: "active" }).select("baseFactor");
 
                 if (helper) {
+                    console.log(request);
                     const helperCost = await helperBilling(detail.startTime, detail.endTime, request.service, helper.baseFactor);
 
                     // Gán helper vào đơn detail
