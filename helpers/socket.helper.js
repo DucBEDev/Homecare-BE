@@ -59,7 +59,7 @@ const setupChatChangeStreams = (io) => {
     messagesChangeStream.on("change", async (change) => {
         if (change.operationType === "insert") {
             const newMessage = change.fullDocument;
-            console.log("New message:", newMessage);
+            console.log("New message created:", newMessage._id);
             
             // Populate sender info
             const senderInfo = await populateSenderInfo(newMessage.senderId, newMessage.senderType);
@@ -69,55 +69,8 @@ const setupChatChangeStreams = (io) => {
                 senderInfo
             };
 
-            // Emit tin nhắn mới cho conversation room
-            io.to(`conversation_${newMessage.conversationId}`).emit('new_message', messageWithSender);
-            
-            // Emit notification cho participants không ở trong conversation room
-            try {
-                const conversation = await Conversation.findById(newMessage.conversationId);
-                if (conversation) {
-                    conversation.participants.forEach(participant => {
-                        if (participant.id !== newMessage.senderId) {
-                            io.to(`user_${participant.id}`).emit('conversation_updated', {
-                                conversationId: newMessage.conversationId,
-                                lastMessage: newMessage.content,
-                                lastUpdated: newMessage.createdAt
-                            });
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Error notifying participants:', error);
-            }
-        }
-    });
-
-    // Theo dõi thay đổi status tin nhắn
-    const messageStatusChangeStream = messages.watch([
-        {
-            $match: {
-                "operationType": "update",
-                "updateDescription.updatedFields.status": { $exists: true }
-            }
-        }
-    ]);
-
-    messageStatusChangeStream.on("change", (change) => {
-        if (change.operationType === "update") {
-            const updatedFields = change.updateDescription.updatedFields;
-            
-            if (updatedFields.status) {
-                console.log("Message status changed:", {
-                    message_id: change.documentKey._id,
-                    newStatus: updatedFields.status
-                });
-                
-                // Emit thay đổi status cho conversation room
-                io.emit("message_status_updated", {
-                    messageId: change.documentKey._id,
-                    status: updatedFields.status
-                });
-            }
+            // Emit tin nhắn mới cho tất cả clients
+            io.emit('new_message', messageWithSender);
         }
     });
 
@@ -127,10 +80,7 @@ const setupChatChangeStreams = (io) => {
         {
             $match: {
                 "operationType": "update",
-                $or: [
-                    { "updateDescription.updatedFields.lastMessage": { $exists: true } },
-                    { "updateDescription.updatedFields.lastUpdated": { $exists: true } }
-                ]
+                "updateDescription.updatedFields.lastMessage": { $exists: true }
             }
         }
     ]);
@@ -139,27 +89,20 @@ const setupChatChangeStreams = (io) => {
         if (change.operationType === "update") {
             const updatedFields = change.updateDescription.updatedFields;
             
-            console.log("Conversation updated:", {
-                conversation_id: change.documentKey._id,
-                updatedFields
-            });
+            console.log("Conversation lastMessage updated:", change.documentKey._id);
             
-            // Emit conversation update
+            // Emit conversation update cho tất cả clients
             io.emit("conversation_updated", {
                 conversationId: change.documentKey._id,
-                ...updatedFields,
-                timestamp: new Date()
+                lastMessage: updatedFields.lastMessage,
+                lastUpdated: updatedFields.lastUpdated || new Date()
             });
         }
     });
 
-    // Handle lỗi cho chat change streams
+    // Handle lỗi
     messagesChangeStream.on("error", (error) => {
         console.error("Messages change stream error:", error);
-    });
-
-    messageStatusChangeStream.on("error", (error) => {
-        console.error("Message status change stream error:", error);
     });
 
     conversationChangeStream.on("error", (error) => {
@@ -170,126 +113,41 @@ const setupChatChangeStreams = (io) => {
 };
 
 /**
- * Setup chat socket handlers
+ * Setup chat socket handlers - Đơn giản hóa chỉ giữ những events cần thiết
  * @param {Object} io - Socket.IO instance
  */
-const setupChatSocketHandlers = (io) => {
-    io.on('connection', (socket) => {
+// const setupChatSocketHandlers = (io) => {
+//     io.on('connection', (socket) => {
         
-        // Chat user join
-        socket.on('chat_user_join', (userData) => {
-            const { userId, userType } = userData;
-            connectedChatUsers.set(socket.id, { userId, userType, socketId: socket.id });
-            console.log(`Chat user ${userId} (${userType}) joined`);
-            
-            // Join user to their personal room
-            socket.join(`user_${userId}`);
-            
-            // Emit online status to others
-            socket.broadcast.emit('user_online', { userId, userType });
-        });
+//         // User join chat (optional - nếu muốn track online users)
+//         socket.on('join_chat', (userData) => {
+//             const { userId, userType } = userData;
+//             connectedChatUsers.set(socket.id, { userId, userType });
+//             console.log(`${userType} ${userId} joined chat`);
+//         });
 
-        // Join conversation room
-        socket.on('join_conversation', (conversationId) => {
-            socket.join(`conversation_${conversationId}`);
-            console.log(`Socket ${socket.id} joined conversation ${conversationId}`);
-        });
+//         // Join conversation room (nếu muốn gửi tin nhắn chỉ cho conversation cụ thể)
+//         socket.on('join_conversation', (conversationId) => {
+//             socket.join(`conversation_${conversationId}`);
+//             console.log(`Socket joined conversation ${conversationId}`);
+//         });
 
-        // Leave conversation room
-        socket.on('leave_conversation', (conversationId) => {
-            socket.leave(`conversation_${conversationId}`);
-            console.log(`Socket ${socket.id} left conversation ${conversationId}`);
-        });
+//         // Leave conversation room
+//         socket.on('leave_conversation', (conversationId) => {
+//             socket.leave(`conversation_${conversationId}`);
+//             console.log(`Socket left conversation ${conversationId}`);
+//         });
 
-        // Typing indicators
-        socket.on('typing_start', (data) => {
-            const { conversationId, userId, userType } = data;
-            socket.to(`conversation_${conversationId}`).emit('user_typing', { 
-                userId, 
-                userType,
-                isTyping: true 
-            });
-        });
-
-        socket.on('typing_stop', (data) => {
-            const { conversationId, userId, userType } = data;
-            socket.to(`conversation_${conversationId}`).emit('user_typing', { 
-                userId, 
-                userType,
-                isTyping: false 
-            });
-        });
-
-        // Mark messages as read
-        socket.on('mark_messages_read', async (data) => {
-            try {
-                const { conversationId, userId } = data;
-
-                await Message.updateMany(
-                    { 
-                        conversationId, 
-                        senderId: { $ne: userId },
-                        status: { $ne: 'read' }
-                    },
-                    { status: 'read' }
-                );
-
-                // Emit read status to conversation
-                io.to(`conversation_${conversationId}`).emit('messages_read', {
-                    conversationId,
-                    readBy: userId
-                });
-
-                console.log(`Messages marked as read by ${userId} in conversation ${conversationId}`);
-            } catch (error) {
-                console.error('Error marking messages as read:', error);
-                socket.emit('chat_error', { message: 'Failed to mark messages as read' });
-            }
-        });
-
-        // Message status update
-        socket.on('update_message_status', async (data) => {
-            try {
-                const { messageId, status } = data;
-
-                await Message.findByIdAndUpdate(messageId, { status }, { new: true });
-
-                // Emit status update to conversation
-                io.to(`conversation_${conversationId}`).emit('message_status_updated', {
-                    messageId,
-                    status
-                });
-
-                console.log(`Message ${messageId} status updated to ${status}`);
-            } catch (error) {
-                console.error('Error updating message status:', error);
-                socket.emit('chat_error', { message: 'Failed to update message status' });
-            }
-        });
-
-        // Get online chat users
-        socket.on('get_online_chat_users', () => {
-            const onlineChatUsers = Array.from(connectedChatUsers.values()).map(user => ({
-                userId: user.userId,
-                userType: user.userType
-            }));
-            socket.emit('online_chat_users', onlineChatUsers);
-        });
-
-        // Handle chat user disconnect
-        socket.on('chat_user_disconnect', () => {
-            const userData = connectedChatUsers.get(socket.id);
-            if (userData) {
-                const { userId, userType } = userData;
-                connectedChatUsers.delete(socket.id);
-                
-                // Emit offline status
-                socket.broadcast.emit('user_offline', { userId, userType });
-                console.log(`Chat user ${userId} (${userType}) disconnected`);
-            }
-        });
-    });
-};
+//         // Disconnect
+//         socket.on('disconnect', () => {
+//             const userData = connectedChatUsers.get(socket.id);
+//             if (userData) {
+//                 connectedChatUsers.delete(socket.id);
+//                 console.log(`${userData.userType} ${userData.userId} disconnected`);
+//             }
+//         });
+//     });
+// };
 
 /**
  * Setup socket change streams để theo dõi thay đổi trong database
@@ -458,40 +316,40 @@ const setupSocketChangeStreams = (io) => {
  * Setup socket connection handlers
  * @param {Object} io - Socket.IO instance
  */
-const setupSocketConnections = (io) => {
-    io.on("connection", (socket) => {
-        console.log("Admin FE connected:", socket.id);
+// const setupSocketConnections = (io) => {
+//     io.on("connection", (socket) => {
+//         console.log("Admin FE connected:", socket.id);
         
-        // Có thể thêm các event handlers khác tại đây
-        socket.on("join_room", (room) => {
-        socket.join(room);
-            console.log(`Socket ${socket.id} joined room: ${room}`);
-        });
+//         // Có thể thêm các event handlers khác tại đây
+//         socket.on("join_room", (room) => {
+//         socket.join(room);
+//             console.log(`Socket ${socket.id} joined room: ${room}`);
+//         });
 
-        socket.on("leave_room", (room) => {
-        socket.leave(room);
-            console.log(`Socket ${socket.id} left room: ${room}`);
-        });
+//         socket.on("leave_room", (room) => {
+//         socket.leave(room);
+//             console.log(`Socket ${socket.id} left room: ${room}`);
+//         });
 
-        socket.on("disconnect", () => {
-            // Handle chat user disconnect
-            const userData = connectedChatUsers.get(socket.id);
-            if (userData) {
-                const { userId, userType } = userData;
-                connectedChatUsers.delete(socket.id);
+//         socket.on("disconnect", () => {
+//             // Handle chat user disconnect
+//             const userData = connectedChatUsers.get(socket.id);
+//             if (userData) {
+//                 const { userId, userType } = userData;
+//                 connectedChatUsers.delete(socket.id);
                 
-                // Emit offline status
-                socket.broadcast.emit('user_offline', { userId, userType });
-                console.log(`Chat user ${userId} (${userType}) disconnected`);
-            }
+//                 // Emit offline status
+//                 socket.broadcast.emit('user_offline', { userId, userType });
+//                 console.log(`Chat user ${userId} (${userType}) disconnected`);
+//             }
             
-            console.log("Admin FE disconnected:", socket.id);
-        });
-    });
+//             console.log("Admin FE disconnected:", socket.id);
+//         });
+//     });
     
-    // Setup chat socket handlers
-    setupChatSocketHandlers(io);
-};
+//     // Setup chat socket handlers
+//     setupChatSocketHandlers(io);
+// };
 
 /**
  * Khởi tạo tất cả socket functionality
@@ -499,14 +357,14 @@ const setupSocketConnections = (io) => {
  */
 const initializeSocket = (io) => {
     setupSocketChangeStreams(io);
-    setupSocketConnections(io);
+    // setupSocketConnections(io);
 };
 
 module.exports = {
     initializeSocket,
     setupSocketChangeStreams,
-    setupSocketConnections,
+    // setupSocketConnections,
     setupChatChangeStreams,
-    setupChatSocketHandlers,
+    // setupChatSocketHandlers,
     connectedChatUsers
 };
