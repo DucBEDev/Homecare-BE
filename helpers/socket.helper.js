@@ -316,40 +316,26 @@ const setupSocketChangeStreams = (io) => {
  * Setup socket connection handlers
  * @param {Object} io - Socket.IO instance
  */
-// const setupSocketConnections = (io) => {
-//     io.on("connection", (socket) => {
-//         console.log("Admin FE connected:", socket.id);
+const setupSocketConnections = (io) => {
+    io.on("connection", (socket) => {
+        console.log("Admin FE connected:", socket.id);
         
-//         // Có thể thêm các event handlers khác tại đây
-//         socket.on("join_room", (room) => {
-//         socket.join(room);
-//             console.log(`Socket ${socket.id} joined room: ${room}`);
-//         });
+        // Basic connection handler để tránh lỗi CORS
+        socket.on("join_room", (room) => {
+            socket.join(room);
+            console.log(`Socket ${socket.id} joined room: ${room}`);
+        });
 
-//         socket.on("leave_room", (room) => {
-//         socket.leave(room);
-//             console.log(`Socket ${socket.id} left room: ${room}`);
-//         });
+        socket.on("leave_room", (room) => {
+            socket.leave(room);
+            console.log(`Socket ${socket.id} left room: ${room}`);
+        });
 
-//         socket.on("disconnect", () => {
-//             // Handle chat user disconnect
-//             const userData = connectedChatUsers.get(socket.id);
-//             if (userData) {
-//                 const { userId, userType } = userData;
-//                 connectedChatUsers.delete(socket.id);
-                
-//                 // Emit offline status
-//                 socket.broadcast.emit('user_offline', { userId, userType });
-//                 console.log(`Chat user ${userId} (${userType}) disconnected`);
-//             }
-            
-//             console.log("Admin FE disconnected:", socket.id);
-//         });
-//     });
-    
-//     // Setup chat socket handlers
-//     setupChatSocketHandlers(io);
-// };
+        socket.on("disconnect", () => {
+            console.log("Admin FE disconnected:", socket.id);
+        });
+    });
+};
 
 /**
  * Khởi tạo tất cả socket functionality
@@ -357,13 +343,13 @@ const setupSocketChangeStreams = (io) => {
  */
 const initializeSocket = (io) => {
     setupSocketChangeStreams(io);
-    // setupSocketConnections(io);
+    setupSocketConnections(io);
 };
 
 module.exports = {
     initializeSocket,
     setupSocketChangeStreams,
-    // setupSocketConnections,
+    setupSocketConnections,
     setupChatChangeStreams,
     // setupChatSocketHandlers,
     connectedChatUsers
