@@ -6,6 +6,7 @@ const Helper = require('../models/helper.model');
 const Request = require('../models/request.model');
 
 const { helperBilling } = require('./helperBilling.helper');
+const { notifyDetailStatusChange } = require('../config/notifications');
 
 
 cron.schedule('*/1 * * * *', async () => {
@@ -27,8 +28,8 @@ cron.schedule('*/1 * * * *', async () => {
         });
 
         for (const detail of requestDetails) {
-            const request = await Request.findOne({ scheduleIds: detail._id.toString() }).select("service scheduleIds");
-            console.log(request);
+            const request = await Request.findOne({ scheduleIds: detail._id.toString() }).select("service scheduleIds customerInfo");
+            // console.log(request);
             if (moment.utc(detail.startTime).diff(now, "minutes") < 30) {
                 await RequestDetail.updateOne(
                     { _id: detail._id },
@@ -59,9 +60,10 @@ cron.schedule('*/1 * * * *', async () => {
                 const helper = await Helper.findOne({ workingStatus: "online", status: "active" }).select("baseFactor");
 
                 if (helper) {
-                    console.log(request);
+                    // console.log(request);
+                    // console.log(detail.startTime, detail.endTime, request.service, helper.baseFactor);
                     const helperCost = await helperBilling(detail.startTime, detail.endTime, request.service, helper.baseFactor);
-
+                    // console.log('helperCost:', helperCost);
                     // Gán helper vào đơn detail
                     await RequestDetail.updateOne(
                         { _id: detail._id },
@@ -71,6 +73,8 @@ cron.schedule('*/1 * * * *', async () => {
                         { _id: helper._id },
                         { workingStatus: "working" }
                     );
+
+                    await notifyDetailStatusChange(request, detail, "assigned");
                 }
             }
         }

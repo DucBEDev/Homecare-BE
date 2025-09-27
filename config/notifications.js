@@ -320,6 +320,7 @@ async function notifyDetailStatusChange(request, detail, newStatus, extraData = 
   const startTime = new Date();
   console.log(`[NOTIFICATION] ========== START DETAIL NOTIFICATION PROCESS ==========`);
   console.log(`[NOTIFICATION] Timestamp: ${startTime.toISOString()}`);
+  console.log("requesttttttt ", request)
   
   if (!request || !request.customerInfo || !request.customerInfo.phone) {
     console.error('[NOTIFICATION] ❌ VALIDATION FAILED: Missing customer phone in request:', request?._id);

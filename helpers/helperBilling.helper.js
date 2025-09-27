@@ -28,7 +28,6 @@ module.exports.helperBilling = async (startTime, endTime, service_coeff, coeffic
 
     // Tổng giờ thường
     const totalNormalHours = totalHours - totalOtHours;
-
     // Tính lương
     const totalCost =
         generalSetting.baseSalary *
