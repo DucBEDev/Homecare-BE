@@ -58,7 +58,7 @@ const populateParticipants = async (conversations) => {
 module.exports.getCreateConversation = async (req, res) => {
     try {
         const staffId = req.query.staffId;
-        console.log(staffId);
+
         const conversations = await Conversation.find({
             'participants.id': staffId,
             conversationType: 'staff'
@@ -70,14 +70,17 @@ module.exports.getCreateConversation = async (req, res) => {
                 .map(p => p.id)
             )
             .flat();
+
         
         const staffListDontHaveConversation = await Staff.find({
             _id: { $nin: idsInConversations }
         }).select("fullName avatar phone");
 
+        const updatedStaffList = staffListDontHaveConversation.filter(staff => staff._id.toString() !== staffId);
+
         return res.status(200).json({
             success: true,
-            staffList: staffListDontHaveConversation
+            staffList: updatedStaffList
         })
     } catch (error) {
         console.log(error);
