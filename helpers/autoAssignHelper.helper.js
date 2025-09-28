@@ -7,6 +7,7 @@ const Request = require('../models/request.model');
 
 const { helperBilling } = require('./helperBilling.helper');
 const { notifyDetailStatusChange } = require('../config/notifications');
+const { notifyHelperJobAssigned } = require('./helperNotifications');
 
 
 cron.schedule('*/1 * * * *', async () => {
@@ -57,7 +58,7 @@ cron.schedule('*/1 * * * *', async () => {
                     }
                 }
             } else {
-                const helper = await Helper.findOne({ workingStatus: "online", status: "active" }).select("baseFactor");
+                const helper = await Helper.findOne({ workingStatus: "online", status: "active" }).select("baseFactor phone");
 
                 if (helper) {
                     // console.log(request);
@@ -75,6 +76,7 @@ cron.schedule('*/1 * * * *', async () => {
                     );
 
                     await notifyDetailStatusChange(request, detail, "assigned");
+                    await notifyHelperJobAssigned(request, helper);
                 }
             }
         }
