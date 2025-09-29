@@ -27,7 +27,6 @@ cron.schedule('*/1 * * * *', async () => {
             workingDate: { $gte: todayUTC, $lt: tomorrowUTC },
             startTime: { $gte: now.toDate(), $lte: oneHourLater.toDate() }
         });
-
         for (const detail of requestDetails) {
             const request = await Request.findOne({ scheduleIds: detail._id.toString() }).select("service scheduleIds customerInfo");
             // console.log(request);
@@ -61,10 +60,7 @@ cron.schedule('*/1 * * * *', async () => {
                 const helper = await Helper.findOne({ workingStatus: "online", status: "active" }).select("baseFactor phone");
 
                 if (helper) {
-                    // console.log(request);
-                    // console.log(detail.startTime, detail.endTime, request.service, helper.baseFactor);
                     const helperCost = await helperBilling(detail.startTime, detail.endTime, request.service, helper.baseFactor);
-                    // console.log('helperCost:', helperCost);
                     // Gán helper vào đơn detail
                     await RequestDetail.updateOne(
                         { _id: detail._id },
@@ -77,6 +73,9 @@ cron.schedule('*/1 * * * *', async () => {
 
                     await notifyDetailStatusChange(request, detail, "assigned");
                     await notifyHelperJobAssigned(request, helper);
+                }
+                else {
+                    console.log(`Chưa có helper online để gán cho detail`);
                 }
             }
         }

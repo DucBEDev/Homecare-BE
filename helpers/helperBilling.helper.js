@@ -11,30 +11,47 @@ module.exports.helperBilling = async (startTime, endTime, service_coeff, coeffic
     const startHour = startTime.getHours(); 
     const endHour = endTime.getHours();
 
-    const totalHours = endHour - startHour; 
+    // Tính tổng giờ làm việc
+    let totalHours = endHour - startHour;
+    // Xử lý trường hợp qua ngày (endHour < startHour)
+    if (totalHours <= 0) {
+        totalHours = (24 - startHour) + endHour;
+    }
 
-    // Số giờ OT đầu ca
-    const otStartHours = startHour < officeStartHour
-        ? officeStartHour - startHour
-        : 0;
+    // Tính giờ OT và giờ thường
+    let totalOtHours = 0;
+    let totalNormalHours = 0;
 
-    // Số giờ OT cuối ca
-    const otEndHours = endHour > officeEndHour
-        ? endHour - officeEndHour
-        : 0;
+    // Trường hợp 1: Hoàn toàn ngoài giờ hành chính
+    if ((startHour >= officeEndHour && endHour >= officeEndHour) || 
+        (startHour < officeStartHour && endHour <= officeStartHour)) {
+        totalOtHours = totalHours;
+        totalNormalHours = 0;
+    }
+    // Trường hợp 2: Hoàn toàn trong giờ hành chính
+    else if (startHour >= officeStartHour && endHour <= officeEndHour) {
+        totalOtHours = 0;
+        totalNormalHours = totalHours;
+    }
+    // Trường hợp 3: Có cả giờ thường và OT
+    else {
+        // Tính phần giao với giờ hành chính
+        const workStart = Math.max(startHour, officeStartHour);
+        const workEnd = Math.min(endHour, officeEndHour);
+        
+        if (workStart < workEnd) {
+            totalNormalHours = workEnd - workStart;
+        }
+        totalOtHours = totalHours - totalNormalHours;
+    }
 
-    // Tổng giờ OT
-    const totalOtHours = otStartHours + otEndHours;
-
-    // Tổng giờ thường
-    const totalNormalHours = totalHours - totalOtHours;
     // Tính lương
     const totalCost =
         generalSetting.baseSalary *
         service_coeff.coefficient_service *
         coefficient_helper *
         (
-            (service_coeff.coefficient_ot * totalOtHours) +
+            (service_coeff.coefficient_ot * service_coeff.coefficient_other * totalOtHours) +
             (service_coeff.coefficient_other * totalNormalHours)
         );
 
