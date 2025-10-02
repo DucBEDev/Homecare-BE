@@ -29,7 +29,6 @@ cron.schedule('*/1 * * * *', async () => {
         });
         for (const detail of requestDetails) {
             const request = await Request.findOne({ scheduleIds: detail._id.toString() }).select("service scheduleIds customerInfo");
-            // console.log(request);
             if (moment.utc(detail.startTime).diff(now, "minutes") < 30) {
                 await RequestDetail.updateOne(
                     { _id: detail._id },
@@ -60,6 +59,7 @@ cron.schedule('*/1 * * * *', async () => {
                 const helper = await Helper.findOne({ workingStatus: "online", status: "active" }).select("baseFactor phone");
 
                 if (helper) {
+                    console.log(request)
                     const helperCost = await helperBilling(detail.startTime, detail.endTime, request.service, helper.baseFactor);
                     // Gán helper vào đơn detail
                     await RequestDetail.updateOne(
