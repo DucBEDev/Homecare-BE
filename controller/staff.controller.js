@@ -132,6 +132,7 @@ module.exports.createPost = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
+        console.log('staff createPost error:', error);
         res.status(500).json({ error: 'Server error' });   
     }
 }
@@ -217,7 +218,7 @@ module.exports.editPatch = async (req, res) => {
 
         res.json({ success: true });
     } catch (error) {
-        console.log(error);
+        console.log("staff editPatch error:", error);
         res.status(500).json({ error: 'Server error' });   
     }
 }
