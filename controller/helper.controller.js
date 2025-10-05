@@ -94,8 +94,7 @@ module.exports.createPost = async (req, res) => {
         if (helper_id) {
             const helperIdExist = await Helper.findOne({
                 helper_id,
-                deleted: false,
-                _id: { $ne: helper_id }   
+                deleted: false,  
             });
             if (helperIdExist) {
                 return res.json({
@@ -108,8 +107,7 @@ module.exports.createPost = async (req, res) => {
         if (phone) {
             const phoneExist = await Helper.findOne({
                 phone,
-                deleted: false,
-                _id: { $ne: helper_id }   
+                deleted: false, 
             });
             if (phoneExist) {
                 return res.json({
