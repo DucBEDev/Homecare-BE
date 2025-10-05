@@ -89,6 +89,7 @@ module.exports.create = async (req, res) => {
 module.exports.createPost = async (req, res) => {
     try {
         const { helper_id, phone } = req.body;
+        console.log(req.body);
 
         if (helper_id) {
             const helperIdExist = await Helper.findOne({
@@ -131,6 +132,7 @@ module.exports.createPost = async (req, res) => {
 
         res.json({success: true}); 
     } catch (error) {
+        console.error("Helper createPost error:", error);
         res.status(500).json({ error: 'Server error' });
     }
 }
